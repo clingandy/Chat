@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2037
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChatSocker", "ChatSocker\ChatSocker.csproj", "{53E1DD0C-8208-4D60-B96D-E59A589FFEB3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChatWeb", "ChatWeb\ChatWeb.csproj", "{325BC19F-96D9-4825-90E0-5023DE8CE914}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatTestApp", "ChatTestApp\ChatTestApp.csproj", "{B643A5C1-FB22-401E-BDBF-AA8383EA114A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{53E1DD0C-8208-4D60-B96D-E59A589FFEB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53E1DD0C-8208-4D60-B96D-E59A589FFEB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53E1DD0C-8208-4D60-B96D-E59A589FFEB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53E1DD0C-8208-4D60-B96D-E59A589FFEB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{325BC19F-96D9-4825-90E0-5023DE8CE914}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{325BC19F-96D9-4825-90E0-5023DE8CE914}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{325BC19F-96D9-4825-90E0-5023DE8CE914}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{325BC19F-96D9-4825-90E0-5023DE8CE914}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B643A5C1-FB22-401E-BDBF-AA8383EA114A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B643A5C1-FB22-401E-BDBF-AA8383EA114A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B643A5C1-FB22-401E-BDBF-AA8383EA114A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B643A5C1-FB22-401E-BDBF-AA8383EA114A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3450BF80-21E1-4535-A332-958A73A13D37}
+	EndGlobalSection
+EndGlobal

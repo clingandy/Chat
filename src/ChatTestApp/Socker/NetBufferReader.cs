@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text;
 
-namespace PubSubTestApp.Socker
+namespace ChatTestApp.Socker
 {
     class NetBufferReader
     {

@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
-namespace PubSubTestApp.Socker
+namespace ChatTestApp.Socker
 {
     public abstract class SingleClass<T> where T : new()
     {

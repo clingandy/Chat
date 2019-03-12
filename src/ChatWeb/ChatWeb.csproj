@@ -10,8 +10,8 @@
 
   <ItemGroup>
     <PackageReference Include="Fleck" Version="1.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.All" Version="2.2.0" />
-    <PackageReference Include="ServiceStack.Redis.Core" Version="5.4.0" />
+    <PackageReference Include="Microsoft.AspNetCore.App" Version="2.2.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.0.519" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using PubSubWeb.Tool;
-using ServiceStack.Redis;
+using StackExchange.Redis;
 
-namespace PubSubWeb.Redis
+namespace ChatWeb.Redis
 {
     public class RedisHelper
     {
@@ -14,59 +13,9 @@ namespace PubSubWeb.Redis
 
         private static readonly string _channelListKey = "pubsub_channels";
 
+        private IDatabase _redisDb => RedisService.Instance.RedisDb;
+
         public static readonly RedisHelper Instance = new Lazy<RedisHelper>(() => new RedisHelper()).Value;
-
-        #endregion
-
-        #region 创建、关闭发布服务
-
-        /// <summary>
-        /// 创建发布服务
-        /// </summary>
-        public void CreatePublisherService(string channelName)
-        {
-            //发布、订阅服务 IRedisPubSubServer
-            var pubSubServer = new RedisPubSubServer(RedisService.Instance.pooledRedisClient, channelName)
-            {
-                OnMessage = (channel, msg) =>
-                {
-
-                },
-                OnStart = () =>
-                {
-
-                },
-                OnStop = () =>
-                {
-
-                },
-                //OnUnSubscribe = (channel) => { },
-                OnError = (e) =>
-                {
-                    //Console.WriteLine(e.Message);
-                },
-                OnFailover = (s) =>
-                {
-                    //Console.WriteLine(s);
-                }
-            };
-
-            //接收消息
-            //pubSubServer.OnHeartbeatReceived = () => { Console.WriteLine("OnHeartbeatReceived"); };
-            //pubSubServer.OnHeartbeatSent = () => { Console.WriteLine("OnHeartbeatSent"); };
-            //pubSubServer.IsSentinelSubscription = true;
-            pubSubServer.Start();
-        }
-
-        /// <summary>
-        /// 关闭发布服务
-        /// </summary>
-        public void ClosePublisherService(string channelName)
-        {
-            //发布、订阅服务 IRedisPubSubServer
-            var pubSubServer = new RedisPubSubServer(RedisService.Instance.pooledRedisClient, channelName);
-            pubSubServer.Stop();
-        }
 
         #endregion
 
@@ -77,32 +26,38 @@ namespace PubSubWeb.Redis
         /// </summary>
         public void OnSubscribe(string channelName, Action<string> sendMsg)
         {
-            using (var consumer = RedisService.Instance.Client)
+            var sub = RedisService.Instance.Proxy.GetSubscriber();
+            sub.Subscribe(channelName, (channel, value) =>
             {
-                //创建订阅
-                var subscription = consumer.CreateSubscription();
+                sendMsg.Invoke(value.ToString());
+            });
 
-                //接收消息处理Action
-                subscription.OnMessage = (channel, msg) =>
-                {
-                    sendMsg.Invoke(msg);
-                };
+            //using (var consumer = RedisService.Instance.Client)
+            //{
+            //    //创建订阅
+            //    var subscription = consumer.CreateSubscription();
 
-                //订阅事件处理Action
-                subscription.OnSubscribe = channel =>
-                {
+            //    //接收消息处理Action
+            //    subscription.OnMessage = (channel, msg) =>
+            //    {
+            //        sendMsg.Invoke(msg);
+            //    };
+
+            //    //订阅事件处理Action
+            //    subscription.OnSubscribe = channel =>
+            //    {
                     
-                };
+            //    };
 
-                //取消订阅事件处理Action
-                subscription.OnUnSubscribe = channel =>
-                {
-                    OnSubscribe(channelName, sendMsg);
-                };
+            //    //取消订阅事件处理Action
+            //    subscription.OnUnSubscribe = channel =>
+            //    {
+            //        OnSubscribe(channelName, sendMsg);
+            //    };
 
-                //订阅渠道
-                subscription.SubscribeToChannels(channelName);
-            }
+            //    //订阅渠道
+            //    subscription.SubscribeToChannels(channelName);
+            //}
         }
 
         /// <summary>
@@ -110,12 +65,7 @@ namespace PubSubWeb.Redis
         /// </summary>
         public void OnUnSubscribe(string channelName)
         {
-            using (var consumer = RedisService.Instance.Client)
-            {
-                //取消订阅
-                var subscription = consumer.CreateSubscription();
-                subscription.UnSubscribeFromChannels(channelName);
-            }
+           RedisService.Instance.Proxy.GetSubscriber().Unsubscribe(channelName);
         }
 
         #endregion
@@ -129,29 +79,27 @@ namespace PubSubWeb.Redis
         {
             Task.Factory.StartNew(() =>
             {
-                using (var client = RedisService.Instance.Client)
-                {
-                    //发送消息
-                    client.PublishMessage(channel, msg);
-                    //保存消息
-                    //SaveMsg(client, channel, msg);
-                }
+                _redisDb.Publish(channel, msg);
+                // 保存消息
+                // SaveMsg(channel, msg);
             });
         }
 
         /// <summary>
         /// 保存消息
         /// </summary>
-        private void SaveMsg(IRedisClient client, string channel, string msg)
+        private void SaveMsg(string channel, string msg)
         {
+            
             //记录消息 只保留500条数据
             var key = $"pubsub_{channel}_msgs";
-            client.AddItemToList(key, msg);
-            if (client.GetListCount(key) > 500)
+            _redisDb.ListLeftPush(key, msg);
+            if (_redisDb.ListLength(key) > 500)
             {
-                client.RemoveStartFromList(key);
+                _redisDb.ListLeftPop(key);
             }
-            client.ExpireEntryIn(key, TimeSpan.FromDays(7));
+
+            _redisDb.KeyExpire(key, TimeSpan.FromDays(7));
         }
 
         /// <summary>
@@ -159,15 +107,7 @@ namespace PubSubWeb.Redis
         /// </summary>
         public List<string> GetMsg(string channel,string userId)
         {
-            using (var gc = RedisService.Instance.Client)
-            {
-                //var list = gc.GetAllItemsFromList($"pubsub_{channel}_{userId.Replace("-", "")}");
-                //return list.JsonSerialize();
-
-                var key = $"pubsub_{channel}_msgs";
-                var msg = gc.RemoveStartFromList(key);
-                return string.IsNullOrWhiteSpace(msg) ? new List<string>() : new List<string>() {msg};
-            }
+            return new List<string>();
         }
 
         #endregion
@@ -179,10 +119,7 @@ namespace PubSubWeb.Redis
         /// </summary>
         public List<string> GetChannelList()
         {
-            using (var client = RedisService.Instance.Client)
-            {
-                return client.GetAllItemsFromSet(_channelListKey).ToList();
-            }
+            return _redisDb.SetMembers(_channelListKey).Select(t=> t.ToString()).ToList();
         }
 
         /// <summary>
@@ -190,10 +127,7 @@ namespace PubSubWeb.Redis
         /// </summary>
         public bool CheckChannel(string value)
         {
-            using (var client = RedisService.Instance.Client)
-            {
-                return client.SetContainsItem(_channelListKey, value);
-            }
+            return _redisDb.SetContains(_channelListKey, value);
         }
 
         /// <summary>
@@ -202,11 +136,8 @@ namespace PubSubWeb.Redis
         /// <param name="channel"></param>
         public void AddChannel(string channel)
         {
-            using (var client = RedisService.Instance.Client)
-            {
-                client.AddItemToSet(_channelListKey, channel);
-                client.PublishMessage("add_channel", channel);
-            }
+            _redisDb.SetAdd(_channelListKey, channel);
+            _redisDb.Publish("add_channel", channel);
         }
 
         /// <summary>
@@ -215,11 +146,8 @@ namespace PubSubWeb.Redis
         /// <param name="channel"></param>
         public void DelChannel(string channel)
         {
-            using (var client = RedisService.Instance.Client)
-            {
-                client.RemoveItemFromSet(_channelListKey, channel);
-                client.PublishMessage("del_channel", channel);
-            }
+            _redisDb.SetRemove(_channelListKey, channel);
+            _redisDb.Publish("add_channel", channel);
         }
 
         #endregion
@@ -232,11 +160,8 @@ namespace PubSubWeb.Redis
         /// <param name="channel"></param>
         public List<string> GetChannelSubscribeUser(string channel)
         {
-            using (var gc = RedisService.Instance.Client)
-            {
-                var key = $"pubsub_{channel}_userids";
-                return gc.GetAllItemsFromSortedSet(key);
-            }
+            var key = $"pubsub_{channel}_userids";
+            return _redisDb.SetMembers(key).Select(t => t.ToString()).ToList();
         }
 
         /// <summary>
@@ -246,12 +171,8 @@ namespace PubSubWeb.Redis
         /// <param name="userId"></param>
         public void AddChannelSubscribeUser(string channel, string userId)
         {
-            using (var gc = RedisService.Instance.Client)
-            {
-                var key = $"pubsub_{channel}_userids";
-                gc.AddItemToSortedSet(key, userId, DateTime.Now.Ticks);
-                //gc.ExpireEntryIn(key, TimeSpan.FromHours(6));
-            }
+            var key = $"pubsub_{channel}_userids";
+            _redisDb.SetAdd(key, userId);
         }
 
         /// <summary>
@@ -261,12 +182,8 @@ namespace PubSubWeb.Redis
         /// <param name="userId"></param>
         public void DelChannelSubscribeUser(string channel, string userId)
         {
-            using (var gc = RedisService.Instance.Client)
-            {
-                var key = $"pubsub_{channel}_userids";
-                gc.RemoveItemFromSortedSet(key, userId);
-                //gc.ExpireEntryIn(key, TimeSpan.FromHours(6));
-            }
+            var key = $"pubsub_{channel}_userids";
+            _redisDb.SetRemove(key, userId);
         }
 
         #endregion

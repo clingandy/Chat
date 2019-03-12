@@ -4,10 +4,10 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using PubSubTestApp.Tool;
+using ChatTestApp.Tool;
 using Exception = System.Exception;
 
-namespace PubSubTestApp
+namespace ChatTestApp
 {
     public partial class ChatroomApp : Form
     {

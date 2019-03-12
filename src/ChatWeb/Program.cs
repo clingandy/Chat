@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 
-namespace PubSubWeb
+namespace ChatWeb
 {
     public class Program
     {

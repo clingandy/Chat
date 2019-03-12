@@ -2,9 +2,9 @@
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using PubSubWeb.Model;
+using ChatWeb.Model;
 
-namespace PubSubWeb.Tool
+namespace ChatWeb.Tool
 {
     /// <summary>
     /// 队列处理

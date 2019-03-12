@@ -1,4 +1,4 @@
-﻿namespace PubSubTestApp
+﻿namespace ChatTestApp
 {
     partial class Chatroom
     {
@@ -111,7 +111,6 @@
             this.Controls.Add(this._txtMsg);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
-            this.MinimizeBox = false;
             this.Name = "Chatroom";
             this.ShowIcon = false;
             this.Text = "Chatroom";

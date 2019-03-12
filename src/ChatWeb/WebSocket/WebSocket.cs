@@ -5,11 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Fleck;
-using PubSubWeb.Model;
-using PubSubWeb.Redis;
-using PubSubWeb.Tool;
+using ChatWeb.Model;
+using ChatWeb.Redis;
+using ChatWeb.Tool;
 
-namespace PubSubWeb.WebSocket
+namespace ChatWeb.WebSocket
 {
     public class WebSocket
     {

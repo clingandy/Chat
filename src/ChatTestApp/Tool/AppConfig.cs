@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Configuration;
 
-namespace PubSubTestApp.Tool
+namespace ChatTestApp.Tool
 {
     public static class AppConfig
     {

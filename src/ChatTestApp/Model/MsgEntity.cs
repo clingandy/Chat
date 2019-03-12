@@ -1,7 +1,7 @@
 ﻿
 using System;
 
-namespace PubSubTestApp.Model
+namespace ChatTestApp.Model
 {
     [Serializable]
     public class MsgEntity

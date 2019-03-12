@@ -7,10 +7,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using PubSubTestApp.Model;
-using PubSubTestApp.Tool;
+using ChatTestApp.Model;
+using ChatTestApp.Tool;
 
-namespace PubSubTestApp
+namespace ChatTestApp
 {
     public partial class Chatroom : Form
     {
@@ -287,7 +287,7 @@ namespace PubSubTestApp
                     var userId = Guid.NewGuid().ToString().Replace("-", "");
                     GetMsgByWebSocket(_channelName, userId, true);
                     _btnAddThread.Text = _isAddThreadTest ? $"停止增加连接数:{_addThreadTestCount}" : $"开始增加连接数:{_addThreadTestCount}";
-                    Thread.Sleep(50);
+                    Thread.Sleep(5);
                 }
             }, _tokenSource.Token);
         }

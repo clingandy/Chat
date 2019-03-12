@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace PubSubWeb.Model
+namespace ChatWeb.Model
 {
     [Serializable]
     public class EventArgs<T> : EventArgs

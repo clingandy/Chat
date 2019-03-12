@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Configuration;
 
-namespace PubSubWeb.Tool
+namespace ChatWeb.Tool
 {
     public class AppSettingsHelper
     {

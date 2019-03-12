@@ -1,8 +1,8 @@
 ﻿using System;
-using PubSubWeb.Tool;
-using ServiceStack.Redis;
+using ChatWeb.Tool;
+using StackExchange.Redis;
 
-namespace PubSubWeb.Redis
+namespace ChatWeb.Redis
 {
 
     public abstract class SingleClass<T> where T : new()
@@ -12,23 +12,76 @@ namespace PubSubWeb.Redis
 
     public class RedisService : SingleClass<RedisService>
     {
-        private readonly PooledRedisClientManager _redis;
+        public IDatabase RedisDb { get; }
 
-        public PooledRedisClientManager pooledRedisClient => _redis;
-
-        public IRedisClient Client => _redis.GetClient();
+        public IConnectionMultiplexer Proxy { get; }
 
         public RedisService()
         {
-            var readWriteHosts = new[] { AppSettingsHelper.GetString("Redis:RedisAddr") };
-            var readOnlyHosts = new[] { AppSettingsHelper.GetString("Redis:RedisAddr") };
-            var initialDb = AppSettingsHelper.GetInt32("Redis:RedisDb");
-            _redis = new PooledRedisClientManager(readWriteHosts, readOnlyHosts, new RedisClientManagerConfig()
-            {
-                MaxWritePoolSize = 5,
-                MaxReadPoolSize = 5,
-                AutoStart = true
-            }, initialDb, 50, 5);
+            Proxy = ConnectionMultiplexer.Connect(AppSettingsHelper.GetString("Redis:RedisAddr"));
+            RedisDb = Proxy.GetDatabase(AppSettingsHelper.GetInt32("Redis:RedisDb"));
+
+            //事件注册
+            Proxy.ConnectionFailed += MuxerConnectionFailed;
+            Proxy.ConnectionRestored += MuxerConnectionRestored;
+            Proxy.ErrorMessage += MuxerErrorMessage;
+            Proxy.ConfigurationChanged += MuxerConfigurationChanged;
+            Proxy.HashSlotMoved += MuxerHashSlotMoved;
+            Proxy.InternalError += MuxerInternalError;
+        }
+
+        /// <summary>
+        /// 内部异常
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerInternalError(object sender, InternalErrorEventArgs e)
+        {
+        }
+
+        /// <summary>
+        /// 集群更改
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerHashSlotMoved(object sender, HashSlotMovedEventArgs e)
+        {
+        }
+
+        /// <summary>
+        /// 配置更改事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerConfigurationChanged(object sender, EndPointEventArgs e)
+        {
+        }
+
+        /// <summary>
+        /// 错误事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerErrorMessage(object sender, RedisErrorEventArgs e)
+        {
+        }
+
+        /// <summary>
+        /// 重连错误事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerConnectionRestored(object sender, ConnectionFailedEventArgs e)
+        {
+        }
+
+        /// <summary>
+        /// 连接失败事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerConnectionFailed(object sender, ConnectionFailedEventArgs e)
+        {
         }
     }
 

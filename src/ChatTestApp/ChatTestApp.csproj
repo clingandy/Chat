@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{B643A5C1-FB22-401E-BDBF-AA8383EA114A}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>PubSubTestApp</RootNamespace>
-    <AssemblyName>PubSubTestApp</AssemblyName>
+    <RootNamespace>ChatTestApp</RootNamespace>
+    <AssemblyName>ChatTestApp</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -83,6 +83,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <EmbeddedResource Include="ChatroomApp.resx">
       <DependentUpon>ChatroomApp.cs</DependentUpon>

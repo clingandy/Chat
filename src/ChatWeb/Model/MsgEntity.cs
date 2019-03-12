@@ -1,7 +1,7 @@
 ﻿
 using System;
 
-namespace PubSubWeb.Model
+namespace ChatWeb.Model
 {
     [Serializable]
     public class MsgEntity

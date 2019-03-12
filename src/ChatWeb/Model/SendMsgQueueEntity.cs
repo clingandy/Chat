@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Fleck;
 
-namespace PubSubWeb.Model
+namespace ChatWeb.Model
 {
     public class SendMsgQueueSingleEntity
     {

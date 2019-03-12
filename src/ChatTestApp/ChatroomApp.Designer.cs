@@ -1,4 +1,4 @@
-﻿namespace PubSubTestApp
+﻿namespace ChatTestApp
 {
     partial class ChatroomApp
     {
@@ -98,7 +98,6 @@
             this.Controls.Add(this._btnAddChannel);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
-            this.MinimizeBox = false;
             this.Name = "ChatroomApp";
             this.ShowIcon = false;
             this.Text = "ChatroomApp";

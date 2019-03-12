@@ -4,7 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 
-namespace PubSubTestApp.Tool
+namespace ChatTestApp.Tool
 {
     public static class Utils
     {

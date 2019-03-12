@@ -2,7 +2,7 @@
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
-namespace PubSubWeb.Tool
+namespace ChatWeb.Tool
 {
     public static class JsonHelper
     {

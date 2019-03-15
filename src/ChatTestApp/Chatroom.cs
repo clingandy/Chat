@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Threading.Tasks.Dataflow;
 using ChatTestApp.Model;
 using ChatTestApp.Tool;
 
@@ -14,13 +14,18 @@ namespace ChatTestApp
 {
     public partial class Chatroom : Form
     {
+        #region 基础
+
+        int _threadSleepTime = 500; //线程睡眠时间
         int _addThreadTestCount;    //线程添加的数量
         int _roomUserCount; //房间用户数量
         volatile bool _isSendMsgTest = false;   //是否发送测试消息
         volatile bool _isAddThreadTest = false;  //是否添加连接数
         readonly string _channelName;
         readonly string _userId;
-        
+
+        private readonly ActionBlock<string> _reMsgActionBlockBatch;
+        private ClientWebSocket _clientWebSocket;
         readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
         public Chatroom(string channelName, string userId)
@@ -39,6 +44,9 @@ namespace ChatTestApp
             _channelName = channelName;
             _addThreadTestCount = 0;
 
+            //初始化队列
+            _reMsgActionBlockBatch = new ActionBlock<string>(msg => { MsgHandle(msg); });
+
             //获取用户列表
             GetUserList();
             // 获取websocker
@@ -46,7 +54,6 @@ namespace ChatTestApp
             // 添加连接数
            AddAddThreadTestTask();
         }
-
 
         private void _txtMsg_KeyPress(object sender, KeyPressEventArgs e)
         {
@@ -57,9 +64,9 @@ namespace ChatTestApp
         {
             _isAddThreadTest = false;
             _tokenSource.Cancel();
-            if (AppConfig.DicOpenChannel.ContainsKey(_channelName))
+            if (AppConfig.DicOpenForms.ContainsKey(_channelName))
             {
-                AppConfig.DicOpenChannel.TryRemove(_channelName, out _);
+                AppConfig.DicOpenForms.TryRemove(_channelName, out _);
             }
         }
 
@@ -68,6 +75,8 @@ namespace ChatTestApp
             _isAddThreadTest = false;
             _tokenSource.Cancel();
         }
+
+        #endregion
 
         #region 操作
 
@@ -113,12 +122,17 @@ namespace ChatTestApp
                     UserId = _userId
                 }.JsonSerialize();
 
-                var task = new Task(() =>
-                {
-                    Utils.GetData($"{AppConfig.Url}/SendMsg?channel={_channelName}&msg={content}");
-                    //ShowMsg(msg);
-                });
-                task.Start();
+                //API发送消息
+                //var task = new Task(() =>
+                //{
+                //    Utils.GetData($"{AppConfig.Url}/SendMsg?channel={_channelName}&msg={content}");
+                //    //ShowMsg(msg);
+                //});
+                //task.Start();
+
+                //WebSocket发送消息
+                var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(content));
+                _clientWebSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
 
             }
         }
@@ -135,17 +149,20 @@ namespace ChatTestApp
                 {
                     ShowMsg("WebSocker连接服务器", isTest);
                     var ws = new ClientWebSocket();
-                    //ws.Options.AddSubProtocol(channelName);
                     await ws.ConnectAsync(new Uri($"{AppConfig.WebSocketUrl}?{channelName}?{userId}"), CancellationToken.None);
                     ShowMsg("WebSocker连接服务器成功", isTest);
+                    if (!isTest)
+                    {
+                        _clientWebSocket = ws;
+                    } 
                     while (true)
                     {
-                        var result = new byte[1024];
-                        await ws.ReceiveAsync(new ArraySegment<byte>(result), CancellationToken.None); //接受数据
-                        var msgStr = Encoding.UTF8.GetString(result, 0, result.Length);
+                        var buffer = new ArraySegment<byte>(new byte[1024]);
+                        await ws.ReceiveAsync(buffer, CancellationToken.None); //接受数据
+                        var msgStr = Encoding.UTF8.GetString(RemoveSeparator(buffer.ToArray()));
                         if (!isTest)
                         {
-                            MsgHandle(msgStr.Replace("\\0", ""));    //处理空字符
+                            _reMsgActionBlockBatch.Post(msgStr);
                         }
                     }
                 }
@@ -153,10 +170,22 @@ namespace ChatTestApp
                 {
                     ShowMsg("WebSocker出错：" + e.Message, isTest);
                     //重连
-                    Thread.Sleep(10000);
+                    Thread.Sleep(5000);
                     GetMsgByWebSocket(channelName, userId, isTest);
                 }
             });
+        }
+
+        /// <summary>
+        /// 去除空白
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        private static byte[] RemoveSeparator(byte[] data)
+        {
+            List<byte> t = new List<byte>(data);
+            t.Remove(0x1e);
+            return t.ToArray();
         }
 
         /// <summary>
@@ -237,8 +266,15 @@ namespace ChatTestApp
 
         #endregion
 
-
         #region 连接数并发、消息并发
+
+        private void _txtThreadSleepTime_Leave(object sender, EventArgs e)
+        {
+            if (Int32.TryParse(_txtThreadSleepTime.Text, out var threadSleepTime))
+            {
+                _threadSleepTime = threadSleepTime;
+            }
+        }
 
         private void _btnAddThread_Click(object sender, EventArgs e)
         {
@@ -254,18 +290,28 @@ namespace ChatTestApp
             }
             _isSendMsgTest = true;
             _btnSendMsgTest.Text = @"并发消息测试...";
-            Task.Factory.StartNew(() =>
+
+            var msgModel = new MsgEntity
             {
-                var count = 100;
+                Type = (int) MsgTypeEnum.文本,
+                Data = "",
+                Code = 200,
+                UserId = _userId
+            };
+            Task.Factory.StartNew(async () =>
+            {
+                var count = 50;
                 while (count-- > 0)
                 {
-                    var content = $"这是一条测试消息！100毫秒发送一次，共100次，次数：{count}";
-                    var task = new Task(() =>
-                    {
-                        Utils.GetData($"{AppConfig.Url}/SendMsg?channel={_channelName}&msg={content}");
-                    });
-                    task.Start();
-                    Thread.Sleep(100);
+                    msgModel.Data = $"这是一条测试消息！{_threadSleepTime}毫秒发送一次，共50次，次数：{count}";
+                    //var task = new Task(() =>
+                    //{
+                    //    Utils.GetData($"{AppConfig.Url}/SendMsg?channel={_channelName}&msg={msgModel.JsonSerialize()}");
+                    //});
+                    //task.Start();
+                    var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(msgModel.JsonSerialize()));
+                    await _clientWebSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+                    Thread.Sleep(_threadSleepTime);
                 }
                 _isSendMsgTest = false;
                 _btnSendMsgTest.Text = @"并发消息测试";
@@ -280,21 +326,21 @@ namespace ChatTestApp
                 {
                     if (!_isAddThreadTest)
                     {
-                        Thread.Sleep(2000);
+                        Thread.Sleep(_threadSleepTime);
                         continue;
                     }
                     _addThreadTestCount++;
                     var userId = Guid.NewGuid().ToString().Replace("-", "");
                     GetMsgByWebSocket(_channelName, userId, true);
                     _btnAddThread.Text = _isAddThreadTest ? $"停止增加连接数:{_addThreadTestCount}" : $"开始增加连接数:{_addThreadTestCount}";
-                    Thread.Sleep(5);
+                    Thread.Sleep(_threadSleepTime);
                 }
             }, _tokenSource.Token);
         }
 
 
+
         #endregion
 
-        
     }
 }

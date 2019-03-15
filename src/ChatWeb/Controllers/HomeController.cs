@@ -1,11 +1,20 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using ChatWeb.Redis;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatWeb.Controllers
 {
     public class HomeController : ControllerBase
     {
+        private readonly RedisMessageManage _redisMessageManage;
+
+        public HomeController(IServiceProvider service)
+        {
+            _redisMessageManage = service.GetService<RedisMessageManage>();
+        }
+
         #region 主页
 
         public JsonResult Index()
@@ -23,7 +32,7 @@ namespace ChatWeb.Controllers
         /// <returns></returns>
         public JsonResult GetChannelList()
         {
-            return new JsonResult(RedisHelper.Instance.GetChannelList());
+            return new JsonResult(_redisMessageManage.GetChannelList());
         }
 
         /// <summary>
@@ -35,7 +44,7 @@ namespace ChatWeb.Controllers
         {
             if (!string.IsNullOrWhiteSpace(channel))
             {
-                RedisHelper.Instance.AddChannel(channel);
+                _redisMessageManage.AddChannel(channel);
             }
             return new JsonResult("添加渠道OK");
         }
@@ -49,7 +58,7 @@ namespace ChatWeb.Controllers
         {
             if (!string.IsNullOrWhiteSpace(channel))
             {
-                RedisHelper.Instance.DelChannel(channel);
+                _redisMessageManage.DelChannel(channel);
             }
             return new JsonResult("删除渠道OK");
         }
@@ -64,7 +73,7 @@ namespace ChatWeb.Controllers
         {
             if (!string.IsNullOrWhiteSpace(channel) && !string.IsNullOrWhiteSpace(userId))
             {
-                RedisHelper.Instance.AddChannelSubscribeUser(channel, userId);
+                _redisMessageManage.AddChannelSubscribeUser(channel, userId);
             }
             return new JsonResult("订阅渠道OK");
         }
@@ -78,7 +87,7 @@ namespace ChatWeb.Controllers
         {
             if (!string.IsNullOrWhiteSpace(channel))
             {
-                var userList = RedisHelper.Instance.GetChannelSubscribeUser(channel);
+                var userList = _redisMessageManage.GetChannelSubscribeUser(channel);
                 return new JsonResult(userList);
             }
             return new JsonResult(new List<string>());
@@ -92,7 +101,7 @@ namespace ChatWeb.Controllers
         /// </summary>
         public JsonResult SendMsg(string channel, string msg)
         {
-            RedisHelper.Instance.SendMsg(channel, msg);
+            _redisMessageManage.SendMsg(channel, msg);
             return new JsonResult("发送消息OK");
         }
 
@@ -101,7 +110,7 @@ namespace ChatWeb.Controllers
         /// </summary>
         public JsonResult GetMsg(string channel, string userId)
         {
-            var msg = RedisHelper.Instance.GetMsg(channel, userId);
+            var msg = _redisMessageManage.GetMsg(channel, userId);
             return new JsonResult(msg);
         }
 

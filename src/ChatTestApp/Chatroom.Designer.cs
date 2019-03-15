@@ -34,6 +34,7 @@
             this._listBoxUserList = new System.Windows.Forms.ListBox();
             this._btnAddThread = new System.Windows.Forms.Button();
             this._btnSendMsgTest = new System.Windows.Forms.Button();
+            this._txtThreadSleepTime = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // _listBoxMsg
@@ -43,13 +44,13 @@
             this._listBoxMsg.ItemHeight = 12;
             this._listBoxMsg.Location = new System.Drawing.Point(260, 13);
             this._listBoxMsg.Name = "_listBoxMsg";
-            this._listBoxMsg.Size = new System.Drawing.Size(449, 424);
+            this._listBoxMsg.Size = new System.Drawing.Size(542, 424);
             this._listBoxMsg.TabIndex = 10;
             // 
             // _btnSendMsg
             // 
             this._btnSendMsg.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this._btnSendMsg.Location = new System.Drawing.Point(586, 552);
+            this._btnSendMsg.Location = new System.Drawing.Point(679, 550);
             this._btnSendMsg.Name = "_btnSendMsg";
             this._btnSendMsg.Size = new System.Drawing.Size(114, 29);
             this._btnSendMsg.TabIndex = 8;
@@ -64,7 +65,7 @@
             this._txtMsg.MaxLength = 450;
             this._txtMsg.Multiline = true;
             this._txtMsg.Name = "_txtMsg";
-            this._txtMsg.Size = new System.Drawing.Size(449, 149);
+            this._txtMsg.Size = new System.Drawing.Size(542, 149);
             this._txtMsg.TabIndex = 6;
             this._txtMsg.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this._txtMsg_KeyPress);
             // 
@@ -79,7 +80,7 @@
             // 
             // _btnAddThread
             // 
-            this._btnAddThread.Location = new System.Drawing.Point(415, 552);
+            this._btnAddThread.Location = new System.Drawing.Point(503, 550);
             this._btnAddThread.Name = "_btnAddThread";
             this._btnAddThread.Size = new System.Drawing.Size(150, 29);
             this._btnAddThread.TabIndex = 12;
@@ -90,7 +91,7 @@
             // _btnSendMsgTest
             // 
             this._btnSendMsgTest.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this._btnSendMsgTest.Location = new System.Drawing.Point(274, 552);
+            this._btnSendMsgTest.Location = new System.Drawing.Point(376, 550);
             this._btnSendMsgTest.Name = "_btnSendMsgTest";
             this._btnSendMsgTest.Size = new System.Drawing.Size(121, 29);
             this._btnSendMsgTest.TabIndex = 13;
@@ -98,11 +99,22 @@
             this._btnSendMsgTest.UseVisualStyleBackColor = true;
             this._btnSendMsgTest.Click += new System.EventHandler(this._btnSendMsgTest_Click);
             // 
+            // _txtThreadSleepTime
+            // 
+            this._txtThreadSleepTime.Font = new System.Drawing.Font("宋体", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this._txtThreadSleepTime.Location = new System.Drawing.Point(270, 550);
+            this._txtThreadSleepTime.Name = "_txtThreadSleepTime";
+            this._txtThreadSleepTime.Size = new System.Drawing.Size(100, 26);
+            this._txtThreadSleepTime.TabIndex = 14;
+            this._txtThreadSleepTime.Text = "500";
+            this._txtThreadSleepTime.Leave += new System.EventHandler(this._txtThreadSleepTime_Leave);
+            // 
             // Chatroom
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(721, 604);
+            this.ClientSize = new System.Drawing.Size(814, 604);
+            this.Controls.Add(this._txtThreadSleepTime);
             this.Controls.Add(this._btnSendMsgTest);
             this.Controls.Add(this._btnAddThread);
             this.Controls.Add(this._btnSendMsg);
@@ -129,5 +141,6 @@
         private System.Windows.Forms.ListBox _listBoxUserList;
         private System.Windows.Forms.Button _btnAddThread;
         private System.Windows.Forms.Button _btnSendMsgTest;
+        private System.Windows.Forms.TextBox _txtThreadSleepTime;
     }
 }

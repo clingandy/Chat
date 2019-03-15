@@ -1,8 +1,11 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using ChatWeb.Redis;
+using ChatWeb.Tool;
+using ChatWeb.WebSocket;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using RedisAccessor;
 
 namespace ChatWeb
 {
@@ -14,8 +17,17 @@ namespace ChatWeb
         {
             services.AddMvc();
 
-            var webSocket = new WebSocket.WebSocket();
-            Task.Factory.StartNew(webSocket.InitWebSocker);
+            services.AddSingleton(redisHelper =>
+            {
+                var redisAddr = AppSettingsHelper.GetString("Redis:RedisAddr");
+                var redisDb = AppSettingsHelper.GetInt32("Redis:RedisDb");
+                var prefixKey = AppSettingsHelper.GetString("Redis:PrefixKey") ?? "prefix_";
+                return DependencyExtensions.UseRedis(redisAddr, redisDb, prefixKey);
+            });
+            services.AddSingleton<WebSocketService>();
+            services.AddSingleton<RedisMessageManage>();
+
+            services.AddHostedService<AppBackgroundService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

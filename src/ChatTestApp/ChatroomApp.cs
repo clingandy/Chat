@@ -104,14 +104,14 @@ namespace ChatTestApp
 
             try
             {
-                if (AppConfig.DicOpenChannel.ContainsKey(name))
+                if (AppConfig.DicOpenForms.ContainsKey(name))
                 {
-                    AppConfig.DicOpenChannel[name].Activate();
+                    AppConfig.DicOpenForms[name].Activate();
                     return;
                 }
 
                 var chatroom = new Chatroom(name, _userId);
-                AppConfig.DicOpenChannel[name] = chatroom;
+                AppConfig.DicOpenForms[name] = chatroom;
                 chatroom.Show();
             }
             catch (Exception)

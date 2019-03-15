@@ -1,21 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using StackExchange.Redis;
+using RedisAccessor;
 
 namespace ChatWeb.Redis
 {
-    public class RedisHelper
+    public class RedisMessageManage
     {
         #region 属性、构造
 
-        private static readonly string _channelListKey = "pubsub_channels";
+        private static readonly string _channelListKey = "channels";
 
-        private IDatabase _redisDb => RedisService.Instance.RedisDb;
+        private readonly RedisHelper _redisHelper;
 
-        public static readonly RedisHelper Instance = new Lazy<RedisHelper>(() => new RedisHelper()).Value;
+        public RedisMessageManage(RedisHelper redisHelper)
+        {
+            _redisHelper = redisHelper;
+        }
 
         #endregion
 
@@ -26,38 +28,10 @@ namespace ChatWeb.Redis
         /// </summary>
         public void OnSubscribe(string channelName, Action<string> sendMsg)
         {
-            var sub = RedisService.Instance.Proxy.GetSubscriber();
-            sub.Subscribe(channelName, (channel, value) =>
+            _redisHelper.Subscribe(channelName, (channel, value) =>
             {
                 sendMsg.Invoke(value.ToString());
             });
-
-            //using (var consumer = RedisService.Instance.Client)
-            //{
-            //    //创建订阅
-            //    var subscription = consumer.CreateSubscription();
-
-            //    //接收消息处理Action
-            //    subscription.OnMessage = (channel, msg) =>
-            //    {
-            //        sendMsg.Invoke(msg);
-            //    };
-
-            //    //订阅事件处理Action
-            //    subscription.OnSubscribe = channel =>
-            //    {
-                    
-            //    };
-
-            //    //取消订阅事件处理Action
-            //    subscription.OnUnSubscribe = channel =>
-            //    {
-            //        OnSubscribe(channelName, sendMsg);
-            //    };
-
-            //    //订阅渠道
-            //    subscription.SubscribeToChannels(channelName);
-            //}
         }
 
         /// <summary>
@@ -65,7 +39,7 @@ namespace ChatWeb.Redis
         /// </summary>
         public void OnUnSubscribe(string channelName)
         {
-           RedisService.Instance.Proxy.GetSubscriber().Unsubscribe(channelName);
+            _redisHelper.Unsubscribe(channelName);
         }
 
         #endregion
@@ -79,7 +53,7 @@ namespace ChatWeb.Redis
         {
             Task.Factory.StartNew(() =>
             {
-                _redisDb.Publish(channel, msg);
+                _redisHelper.Publish(channel, msg);
                 // 保存消息
                 // SaveMsg(channel, msg);
             });
@@ -92,14 +66,14 @@ namespace ChatWeb.Redis
         {
             
             //记录消息 只保留500条数据
-            var key = $"pubsub_{channel}_msgs";
-            _redisDb.ListLeftPush(key, msg);
-            if (_redisDb.ListLength(key) > 500)
+            var key = $"{channel}_msgs";
+            _redisHelper.ListLeftPush(key, msg);
+            if (_redisHelper.ListLength(key) > 500)
             {
-                _redisDb.ListLeftPop(key);
+                _redisHelper.ListRightPop<string>(key);
             }
 
-            _redisDb.KeyExpire(key, TimeSpan.FromDays(7));
+            _redisHelper.KeyExpire(key, TimeSpan.FromDays(7));
         }
 
         /// <summary>
@@ -119,7 +93,7 @@ namespace ChatWeb.Redis
         /// </summary>
         public List<string> GetChannelList()
         {
-            return _redisDb.SetMembers(_channelListKey).Select(t=> t.ToString()).ToList();
+            return _redisHelper.SetMembersAsync(_channelListKey).Result.Select(t=> t.ToString()).ToList();
         }
 
         /// <summary>
@@ -127,7 +101,7 @@ namespace ChatWeb.Redis
         /// </summary>
         public bool CheckChannel(string value)
         {
-            return _redisDb.SetContains(_channelListKey, value);
+            return _redisHelper.SetContains(_channelListKey, value);
         }
 
         /// <summary>
@@ -136,8 +110,7 @@ namespace ChatWeb.Redis
         /// <param name="channel"></param>
         public void AddChannel(string channel)
         {
-            _redisDb.SetAdd(_channelListKey, channel);
-            _redisDb.Publish("add_channel", channel);
+            _redisHelper.SetAdd(_channelListKey, channel);
         }
 
         /// <summary>
@@ -146,8 +119,7 @@ namespace ChatWeb.Redis
         /// <param name="channel"></param>
         public void DelChannel(string channel)
         {
-            _redisDb.SetRemove(_channelListKey, channel);
-            _redisDb.Publish("add_channel", channel);
+            _redisHelper.SetRemove(_channelListKey, channel);
         }
 
         #endregion
@@ -160,8 +132,8 @@ namespace ChatWeb.Redis
         /// <param name="channel"></param>
         public List<string> GetChannelSubscribeUser(string channel)
         {
-            var key = $"pubsub_{channel}_userids";
-            return _redisDb.SetMembers(key).Select(t => t.ToString()).ToList();
+            var key = $"{channel}_userids";
+            return _redisHelper.SetMembers(key).Select(t => t.ToString()).ToList();
         }
 
         /// <summary>
@@ -171,8 +143,8 @@ namespace ChatWeb.Redis
         /// <param name="userId"></param>
         public void AddChannelSubscribeUser(string channel, string userId)
         {
-            var key = $"pubsub_{channel}_userids";
-            _redisDb.SetAdd(key, userId);
+            var key = $"{channel}_userids";
+            _redisHelper.SetAdd(key, userId);
         }
 
         /// <summary>
@@ -182,8 +154,8 @@ namespace ChatWeb.Redis
         /// <param name="userId"></param>
         public void DelChannelSubscribeUser(string channel, string userId)
         {
-            var key = $"pubsub_{channel}_userids";
-            _redisDb.SetRemove(key, userId);
+            var key = $"{channel}_userids";
+            _redisHelper.SetRemove(key, userId);
         }
 
         #endregion

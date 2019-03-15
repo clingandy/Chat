@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Fleck;
@@ -11,43 +10,37 @@ using ChatWeb.Tool;
 
 namespace ChatWeb.WebSocket
 {
-    public class WebSocket
+    public class WebSocketService: IDisposable
     {
-        private static int _maxDegreeOfParallelism = 50;
+        private readonly RedisMessageManage _redisMessageManage;
+
         private static ConcurrentDictionary<string, List<IWebSocketConnection>> _dicSockets;
 
+        private ActionBlock<SendMsgQueueBatchEntity> _sendMsgActionBlockBatch;
 
-        /// <summary>
-        /// 并发发送消息 方案一
-        /// </summary>
-        private readonly ActionBlock<SendMsgQueueSingleEntity> _sendMsgActionBlockSingle = new ActionBlock<SendMsgQueueSingleEntity>(model =>
-            {
-                model.Socket.Send(model.Msg);
-            }
-            , new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism });
-
-        /// <summary>
-        /// 并发发送消息 方案二
-        /// </summary>
-        //private readonly ActionBlock<SendMsgQueueBatchEntity> _sendMsgActionBlockBatch = new ActionBlock<SendMsgQueueBatchEntity>(model =>
-        //    {
-        //        foreach (var socket in model.SocketList)
-        //        {
-        //            socket.Send(model.Msg);
-        //        }
-        //    });
+        public WebSocketService(RedisMessageManage redis)
+        {
+            _redisMessageManage = redis;
+        }
 
         /// <summary>
         /// 初始化
         /// </summary>
         public void InitWebSocker()
         {
-            _maxDegreeOfParallelism = AppSettingsHelper.GetInt32("MaxDegreeOfParallelism");
             _dicSockets = new ConcurrentDictionary<string, List<IWebSocketConnection>>();
-            
+
+            _sendMsgActionBlockBatch = new ActionBlock<SendMsgQueueBatchEntity>(model =>
+            {
+                Parallel.ForEach(model.SocketList, (item) =>
+                {
+                    item.Send(model.Msg);
+                });
+            });
+
             var server = new WebSocketServer("ws://0.0.0.0:7091");
             server.RestartAfterListenError = true;
-            //SubProtocolHandle(server);    //设置后明显变慢
+            //不要使用子协议，使用后明显变慢
 
             server.Start(socket =>
             {
@@ -68,37 +61,18 @@ namespace ChatWeb.WebSocket
 
                 socket.OnMessage = message =>
                 {
+                    var parameter = socket.ConnectionInfo.Path.Replace("/?", "").Split("?");
+                    var channel = parameter[0];
+                    var userId = parameter[1];
+                    _redisMessageManage.SendMsg(channel, message);
+                };
 
+                socket.OnBinary = message =>
+                {
+                    
                 };
             });
 
-        }
-
-        /// <summary>
-        /// 子协议
-        /// </summary>
-        /// <param name="server"></param>
-        private void SubProtocolHandle(WebSocketServer server)
-        {
-            var supportedSubProtocols = RedisHelper.Instance.GetChannelList() ?? new List<string>();
-            server.SupportedSubProtocols = supportedSubProtocols;
-            Task.Factory.StartNew(() =>
-            {
-                RedisHelper.Instance.OnSubscribe("add_channel", channel =>
-                {
-                    supportedSubProtocols.Add(channel);
-                    server.SupportedSubProtocols = supportedSubProtocols;
-                });
-            });
-            Task.Factory.StartNew(() =>
-            {
-                RedisHelper.Instance.OnSubscribe("del_channel", channel =>
-                {
-                    supportedSubProtocols.Remove(channel);
-                    server.SupportedSubProtocols = supportedSubProtocols;
-                });
-            });
-            
         }
 
         /// <summary>
@@ -113,7 +87,7 @@ namespace ChatWeb.WebSocket
 
             if (!_dicSockets.ContainsKey(channel))
             {
-                if (!RedisHelper.Instance.CheckChannel(channel))
+                if (!_redisMessageManage.CheckChannel(channel))
                 {
                     socket.Close(); //关闭，效率比子协议好
                     return;
@@ -121,7 +95,7 @@ namespace ChatWeb.WebSocket
                 _dicSockets[channel] = new List<IWebSocketConnection> {socket};
                 Task.Factory.StartNew(() =>
                 {
-                    RedisHelper.Instance.OnSubscribe(channel, msg =>
+                    _redisMessageManage.OnSubscribe(channel, msg =>
                     {
                         if (!_dicSockets.ContainsKey(channel))
                         {
@@ -129,14 +103,7 @@ namespace ChatWeb.WebSocket
                         }
                         try
                         {
-                            // 方案一
-                            _dicSockets[channel].ForEach(item =>
-                            {
-                                _sendMsgActionBlockSingle.Post(new SendMsgQueueSingleEntity { Socket = item, Msg = msg });
-                            });
-
-                            //方案二
-                            //_sendMsgActionBlockBatch.Post(new SendMsgQueueBatchEntity{ SocketList = _dicSockets[channel], Msg = msg });
+                            _sendMsgActionBlockBatch.Post(new SendMsgQueueBatchEntity{ SocketList = _dicSockets[channel], Msg = msg });
                         }
                         catch (Exception)
                         {
@@ -178,11 +145,11 @@ namespace ChatWeb.WebSocket
             {
                 if (islogin)
                 {
-                    RedisHelper.Instance.AddChannelSubscribeUser(channel, userId);
+                    _redisMessageManage.AddChannelSubscribeUser(channel, userId);
                 }
                 else
                 {
-                    RedisHelper.Instance.DelChannelSubscribeUser(channel, userId);
+                    _redisMessageManage.DelChannelSubscribeUser(channel, userId);
                 }
 
                 //测试用
@@ -194,9 +161,13 @@ namespace ChatWeb.WebSocket
                     UserId = userId
                 }.JsonSerialize();
 
-                RedisHelper.Instance.SendMsg(channel, msg);
+                _redisMessageManage.SendMsg(channel, msg);
             });
         }
 
+        public void Dispose()
+        {
+
+        }
     }
 }

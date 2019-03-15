@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChatWeb", "ChatWeb\ChatWeb.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatTestApp", "ChatTestApp\ChatTestApp.csproj", "{B643A5C1-FB22-401E-BDBF-AA8383EA114A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RedisAccessor", "RedisHelper\RedisAccessor.csproj", "{EBC3E3ED-BACB-4F33-86AD-48EA4A8F7E35}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{B643A5C1-FB22-401E-BDBF-AA8383EA114A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B643A5C1-FB22-401E-BDBF-AA8383EA114A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B643A5C1-FB22-401E-BDBF-AA8383EA114A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBC3E3ED-BACB-4F33-86AD-48EA4A8F7E35}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBC3E3ED-BACB-4F33-86AD-48EA4A8F7E35}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBC3E3ED-BACB-4F33-86AD-48EA4A8F7E35}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBC3E3ED-BACB-4F33-86AD-48EA4A8F7E35}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

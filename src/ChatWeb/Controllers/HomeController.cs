@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using ChatWeb.Model;
 using Microsoft.AspNetCore.Mvc;
 using ChatWeb.Redis;
+using ChatWeb.Tool;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatWeb.Controllers
@@ -24,7 +26,7 @@ namespace ChatWeb.Controllers
 
         #endregion
 
-        #region 渠道、用户管理
+        #region 渠道管理
 
         /// <summary>
         /// 获取渠道
@@ -101,7 +103,7 @@ namespace ChatWeb.Controllers
         /// </summary>
         public JsonResult SendMsg(string channel, string msg)
         {
-            _redisMessageManage.SendMsg(channel, msg);
+            _redisMessageManage.SendMsg(channel, msg.JsonDeserialize<MsgEntity>());
             return new JsonResult("发送消息OK");
         }
 
@@ -110,8 +112,27 @@ namespace ChatWeb.Controllers
         /// </summary>
         public JsonResult GetMsg(string channel, string userId)
         {
-            var msg = _redisMessageManage.GetMsg(channel, userId);
+            var msg = _redisMessageManage.GetMsgList(channel);
             return new JsonResult(msg);
+        }
+
+        #endregion
+
+        #region 用户管理
+
+        /// <summary>
+        /// 获取用户
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public JsonResult GetUserByUserName(string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(userName))
+            {
+                var userList = _redisMessageManage.GetUser(userName).Result;
+                return new JsonResult(userList);
+            }
+            return new JsonResult(new UserEntity());
         }
 
         #endregion

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ChatWeb.Model;
+using ChatWeb.Tool;
 using RedisAccessor;
 
 namespace ChatWeb.Redis
@@ -9,8 +11,6 @@ namespace ChatWeb.Redis
     public class RedisMessageManage
     {
         #region 属性、构造
-
-        private static readonly string _channelListKey = "channels";
 
         private readonly RedisHelper _redisHelper;
 
@@ -49,44 +49,62 @@ namespace ChatWeb.Redis
         /// <summary>
         /// 发送消息
         /// </summary>
-        public void SendMsg(string channel, string msg)
+        public void SendMsg(string channel, MsgEntity msg, bool isSave = false)
         {
             Task.Factory.StartNew(() =>
             {
-                _redisHelper.Publish(channel, msg);
+                _redisHelper.Publish(channel, msg.JsonSerialize());
                 // 保存消息
-                // SaveMsg(channel, msg);
+                if (isSave)
+                {
+                    SaveMsg(channel, msg);
+                }
+                
             });
         }
 
         /// <summary>
-        /// 保存消息
+        /// 保存消息 左进
         /// </summary>
-        private void SaveMsg(string channel, string msg)
+        private Task SaveMsg(string channel, MsgEntity msg)
         {
-            
-            //记录消息 只保留500条数据
-            var key = $"{channel}_msgs";
-            _redisHelper.ListLeftPush(key, msg);
-            if (_redisHelper.ListLength(key) > 500)
-            {
-                _redisHelper.ListRightPop<string>(key);
-            }
-
-            _redisHelper.KeyExpire(key, TimeSpan.FromDays(7));
+            var key = $"msgs_{channel}";
+            return _redisHelper.ListLeftPushAsync(key, msg);
+            //_redisHelper.KeyExpire(key, TimeSpan.FromDays(7));
         }
 
         /// <summary>
-        /// 获取消息
+        /// 消息出栈 右出
         /// </summary>
-        public List<string> GetMsg(string channel,string userId)
+        public Task<MsgEntity> GetNextMsg(string channel)
         {
-            return new List<string>();
+            var key = $"msgs_{channel}";
+            return _redisHelper.ListRightPopAsync<MsgEntity>(key);
+        }
+
+        /// <summary>
+        /// 全部消息
+        /// </summary>
+        public Task<List<MsgEntity>> GetMsgList(string channel)
+        {
+            var key = $"msgs_{channel}";
+            return _redisHelper.ListRangeAsync<MsgEntity>(key);
+        }
+
+        /// <summary>
+        /// 删除全部消息
+        /// </summary>
+        public Task DelAllMsg(string channel)
+        {
+            var key = $"msgs_{channel}";
+            return _redisHelper.KeyDeleteAsync(key);
         }
 
         #endregion
 
-        #region 渠道管理
+        #region 渠道管理（聊天室）
+
+        private readonly string _channelListKey = "channels";
 
         /// <summary>
         /// 获取渠道
@@ -108,23 +126,23 @@ namespace ChatWeb.Redis
         /// 添加渠道
         /// </summary>
         /// <param name="channel"></param>
-        public void AddChannel(string channel)
+        public Task AddChannel(string channel)
         {
-            _redisHelper.SetAdd(_channelListKey, channel);
+            return _redisHelper.SetAddAsync(_channelListKey, channel);
         }
 
         /// <summary>
         /// 删除渠道
         /// </summary>
         /// <param name="channel"></param>
-        public void DelChannel(string channel)
+        public Task DelChannel(string channel)
         {
-            _redisHelper.SetRemove(_channelListKey, channel);
+            return _redisHelper.SetRemoveAsync(_channelListKey, channel);
         }
 
         #endregion
 
-        #region 渠道用户管理
+        #region 渠道用户管理（聊天室）
 
         /// <summary>
         /// 获取订阅用户
@@ -141,10 +159,11 @@ namespace ChatWeb.Redis
         /// </summary>
         /// <param name="channel"></param>
         /// <param name="userId"></param>
-        public void AddChannelSubscribeUser(string channel, string userId)
+        public Task AddChannelSubscribeUser(string channel, string userId)
         {
             var key = $"{channel}_userids";
-            _redisHelper.SetAdd(key, userId);
+            return _redisHelper.SetAddAsync(key, userId);
+
         }
 
         /// <summary>
@@ -152,10 +171,68 @@ namespace ChatWeb.Redis
         /// </summary>
         /// <param name="channel"></param>
         /// <param name="userId"></param>
-        public void DelChannelSubscribeUser(string channel, string userId)
+        public Task DelChannelSubscribeUser(string channel, string userId)
         {
             var key = $"{channel}_userids";
-            _redisHelper.SetRemove(key, userId);
+            return _redisHelper.SetRemoveAsync(key, userId);
+        }
+
+        #endregion
+
+        #region 用户管理（当数据库用，用户好友关系不处理，直接获取全部用户当好友）测试用
+
+        public readonly string RedisUserKey = "User";
+
+        /// <summary>
+        /// 添加用户
+        /// </summary>
+        /// <param name="user"></param>
+        public async void AddUser(UserEntity user)
+        {
+            var isExists = await _redisHelper.HashExistsAsync(RedisUserKey, user.UserName);
+            if (!isExists)
+            {
+                await _redisHelper.HashSetAsync(RedisUserKey, user.UserName, user);
+            }
+        }
+
+        /// <summary>
+        /// 删除用户
+        /// </summary>
+        /// <param name="user"></param>
+        public async void DelUser(UserEntity user)
+        {
+            await _redisHelper.HashDeleteAsync(RedisUserKey, user.UserName);
+        }
+
+        /// <summary>
+        /// 获取用户 不存在添加
+        /// </summary>
+        /// <param name="userName"></param>
+        public async Task<UserEntity> GetUser(string userName)
+        {
+            var isExists = await _redisHelper.HashExistsAsync(RedisUserKey, userName);
+            if (!isExists)
+            {
+                var user = new UserEntity()
+                {
+                    IsOnLine = false,
+                    UserId = Guid.NewGuid().ToString().Replace("-", "").ToLower(),
+                    UserName = userName
+                };
+                await _redisHelper.HashSetAsync(RedisUserKey, user.UserName, user);
+                return user;
+            }
+            return await _redisHelper.HashGetAsync<UserEntity>(RedisUserKey, userName);
+
+        }
+
+        /// <summary>
+        /// 获取用户列表
+        /// </summary>
+        public async Task<List<UserEntity>> GetUserList()
+        {
+            return await _redisHelper.HashValuesAsync<UserEntity>(RedisUserKey);
         }
 
         #endregion

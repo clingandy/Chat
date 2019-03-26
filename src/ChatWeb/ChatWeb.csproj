@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RedisHelper\RedisAccessor.csproj" />
+    <ProjectReference Include="..\RedisAccessor\RedisAccessor.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -241,10 +241,10 @@ namespace RedisAccessor
         /// <param name="value">保存的值</param>
         /// <param name="expiry">过期时间</param>
         /// <returns></returns>
-        public async Task<bool> StringSetAsync(string key, string value, TimeSpan? expiry = default(TimeSpan?))
+        public Task<bool> StringSetAsync(string key, string value, TimeSpan? expiry = default(TimeSpan?))
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.StringSetAsync(key, value, expiry);
+            return _connection.RedisDb.StringSetAsync(key, value, expiry);
         }
 
         /// <summary>
@@ -252,11 +252,11 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="keyValues">键值对</param>
         /// <returns></returns>
-        public async Task<bool> StringSetAsync(List<KeyValuePair<RedisKey, RedisValue>> keyValues)
+        public Task<bool> StringSetAsync(List<KeyValuePair<RedisKey, RedisValue>> keyValues)
         {
             List<KeyValuePair<RedisKey, RedisValue>> newkeyValues =
                 keyValues.Select(p => new KeyValuePair<RedisKey, RedisValue>(AddSysCustomKey(p.Key), p.Value)).ToList();
-            return await _connection.RedisDb.StringSetAsync(newkeyValues.ToArray());
+            return _connection.RedisDb.StringSetAsync(newkeyValues.ToArray());
         }
 
         /// <summary>
@@ -267,11 +267,11 @@ namespace RedisAccessor
         /// <param name="obj"></param>
         /// <param name="expiry"></param>
         /// <returns></returns>
-        public async Task<bool> StringSetAsync<T>(string key, T obj, TimeSpan? expiry = default(TimeSpan?))
+        public Task<bool> StringSetAsync<T>(string key, T obj, TimeSpan? expiry = default(TimeSpan?))
         {
             key = AddSysCustomKey(key);
             string json = ConvertJson(obj);
-            return await _connection.RedisDb.StringSetAsync(key, json, expiry);
+            return _connection.RedisDb.StringSetAsync(key, json, expiry);
         }
 
         /// <summary>
@@ -290,10 +290,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="listKey">Redis Key集合</param>
         /// <returns></returns>
-        public async Task<RedisValue[]> StringGetAsync(List<string> listKey)
+        public Task<RedisValue[]> StringGetAsync(List<string> listKey)
         {
             List<string> newKeys = listKey.Select(AddSysCustomKey).ToList();
-            return await _connection.RedisDb.StringGetAsync(ConvertRedisKeys(newKeys));
+            return _connection.RedisDb.StringGetAsync(ConvertRedisKeys(newKeys));
         }
 
         /// <summary>
@@ -315,10 +315,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="val">可以为负</param>
         /// <returns>增长后的值</returns>
-        public async Task<double> StringIncrementAsync(string key, double val = 1)
+        public Task<double> StringIncrementAsync(string key, double val = 1)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.StringIncrementAsync(key, val);
+            return _connection.RedisDb.StringIncrementAsync(key, val);
         }
 
         /// <summary>
@@ -327,10 +327,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="val">可以为负</param>
         /// <returns>减少后的值</returns>
-        public async Task<double> StringDecrementAsync(string key, double val = 1)
+        public Task<double> StringDecrementAsync(string key, double val = 1)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.StringDecrementAsync(key, val);
+            return _connection.RedisDb.StringDecrementAsync(key, val);
         }
 
         #endregion 异步方法
@@ -433,10 +433,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public async Task<long> ListRemoveAsync<T>(string key, T value)
+        public Task<long> ListRemoveAsync<T>(string key, T value)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.ListRemoveAsync(key, ConvertJson(value));
+            return _connection.RedisDb.ListRemoveAsync(key, ConvertJson(value));
         }
 
         /// <summary>
@@ -456,10 +456,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public async Task<long> ListRightPushAsync<T>(string key, T value)
+        public Task<long> ListRightPushAsync<T>(string key, T value)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.ListRightPushAsync(key, ConvertJson(value));
+            return _connection.RedisDb.ListRightPushAsync(key, ConvertJson(value));
         }
 
         /// <summary>
@@ -481,10 +481,10 @@ namespace RedisAccessor
         /// <typeparam name="T"></typeparam>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public async Task<long> ListLeftPushAsync<T>(string key, T value)
+        public Task<long> ListLeftPushAsync<T>(string key, T value)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.ListLeftPushAsync(key, ConvertJson(value));
+            return _connection.RedisDb.ListLeftPushAsync(key, ConvertJson(value));
         }
 
         /// <summary>
@@ -505,10 +505,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public async Task<long> ListLengthAsync(string key)
+        public Task<long> ListLengthAsync(string key)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.ListLengthAsync(key);
+            return _connection.RedisDb.ListLengthAsync(key);
         }
 
         #endregion 异步方法
@@ -623,6 +623,19 @@ namespace RedisAccessor
             return ConvetList<T>(values);
         }
 
+        /// <summary>
+        /// 获取hashkey所有Redis value
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public List<T> HashValues<T>(string key)
+        {
+            key = AddSysCustomKey(key);
+            RedisValue[] values = _connection.RedisDb.HashValues(key);
+            return ConvetList<T>(values);
+        }
+
         #endregion 同步方法
 
         #region 异步方法
@@ -633,10 +646,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="dataKey"></param>
         /// <returns></returns>
-        public async Task<bool> HashExistsAsync(string key, string dataKey)
+        public Task<bool> HashExistsAsync(string key, string dataKey)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.HashExistsAsync(key, dataKey);
+            return _connection.RedisDb.HashExistsAsync(key, dataKey);
         }
 
         /// <summary>
@@ -647,11 +660,11 @@ namespace RedisAccessor
         /// <param name="dataKey"></param>
         /// <param name="t"></param>
         /// <returns></returns>
-        public async Task<bool> HashSetAsync<T>(string key, string dataKey, T t)
+        public Task<bool> HashSetAsync<T>(string key, string dataKey, T t)
         {
             key = AddSysCustomKey(key);
             string json = ConvertJson(t);
-            return await _connection.RedisDb.HashSetAsync(key, dataKey, json);
+            return _connection.RedisDb.HashSetAsync(key, dataKey, json);
         }
 
         /// <summary>
@@ -660,10 +673,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="dataKey"></param>
         /// <returns></returns>
-        public async Task<bool> HashDeleteAsync(string key, string dataKey)
+        public Task<bool> HashDeleteAsync(string key, string dataKey)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.HashDeleteAsync(key, dataKey);
+            return _connection.RedisDb.HashDeleteAsync(key, dataKey);
         }
 
         /// <summary>
@@ -672,10 +685,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="dataKeys"></param>
         /// <returns></returns>
-        public async Task<long> HashDeleteAsync(string key, List<RedisValue> dataKeys)
+        public Task<long> HashDeleteAsync(string key, List<RedisValue> dataKeys)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.HashDeleteAsync(key, dataKeys.ToArray());
+            return _connection.RedisDb.HashDeleteAsync(key, dataKeys.ToArray());
         }
 
         /// <summary>
@@ -685,7 +698,7 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="dataKey"></param>
         /// <returns></returns>
-        public async Task<T> HashGeAsync<T>(string key, string dataKey)
+        public async Task<T> HashGetAsync<T>(string key, string dataKey)
         {
             key = AddSysCustomKey(key);
             string value = await _connection.RedisDb.HashGetAsync(key, dataKey);
@@ -699,10 +712,10 @@ namespace RedisAccessor
         /// <param name="dataKey"></param>
         /// <param name="val">可以为负</param>
         /// <returns>增长后的值</returns>
-        public async Task<double> HashIncrementAsync(string key, string dataKey, double val = 1)
+        public Task<double> HashIncrementAsync(string key, string dataKey, double val = 1)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.HashIncrementAsync(key, dataKey, val);
+            return _connection.RedisDb.HashIncrementAsync(key, dataKey, val);
         }
 
         /// <summary>
@@ -712,10 +725,10 @@ namespace RedisAccessor
         /// <param name="dataKey"></param>
         /// <param name="val">可以为负</param>
         /// <returns>减少后的值</returns>
-        public async Task<double> HashDecrementAsync(string key, string dataKey, double val = 1)
+        public Task<double> HashDecrementAsync(string key, string dataKey, double val = 1)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.HashDecrementAsync(key, dataKey, val);
+            return _connection.RedisDb.HashDecrementAsync(key, dataKey, val);
         }
 
         /// <summary>
@@ -728,6 +741,19 @@ namespace RedisAccessor
         {
             key = AddSysCustomKey(key);
             RedisValue[] values = await _connection.RedisDb.HashKeysAsync(key);
+            return ConvetList<T>(values);
+        }
+
+        /// <summary>
+        /// 获取hashkey所有Redis value
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public async Task<List<T>> HashValuesAsync<T>(string key)
+        {
+            key = AddSysCustomKey(key);
+            RedisValue[] values = await _connection.RedisDb.HashValuesAsync(key);
             return ConvetList<T>(values);
         }
 
@@ -796,10 +822,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public async Task<bool> SetAddAsync<T>(string key, T value)
+        public Task<bool> SetAddAsync<T>(string key, T value)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.SetAddAsync(key, ConvertJson(value));
+            return _connection.RedisDb.SetAddAsync(key, ConvertJson(value));
         }
 
         /// <summary>
@@ -808,10 +834,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public async Task<bool> SetRemoveAsync<T>(string key, T value)
+        public Task<bool> SetRemoveAsync<T>(string key, T value)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.SetRemoveAsync(key, ConvertJson(value));
+            return _connection.RedisDb.SetRemoveAsync(key, ConvertJson(value));
         }
 
         /// <summary>
@@ -820,10 +846,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public async Task<bool> SetContainsAsync<T>(string key, T value)
+        public Task<bool> SetContainsAsync<T>(string key, T value)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.SetContainsAsync(key, ConvertJson(value));
+            return _connection.RedisDb.SetContainsAsync(key, ConvertJson(value));
         }
 
 
@@ -832,10 +858,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public async Task<RedisValue[]> SetMembersAsync(string key)
+        public Task<RedisValue[]> SetMembersAsync(string key)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.SetMembersAsync(key);
+            return _connection.RedisDb.SetMembersAsync(key);
         }
 
         #endregion
@@ -902,10 +928,10 @@ namespace RedisAccessor
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <param name="score"></param>
-        public async Task<bool> SortedSetAddAsync<T>(string key, T value, double score)
+        public Task<bool> SortedSetAddAsync<T>(string key, T value, double score)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.SortedSetAddAsync(key, ConvertJson<T>(value), score);
+            return _connection.RedisDb.SortedSetAddAsync(key, ConvertJson<T>(value), score);
         }
 
         /// <summary>
@@ -913,10 +939,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        public async Task<bool> SortedSetRemoveAsync<T>(string key, T value)
+        public Task<bool> SortedSetRemoveAsync<T>(string key, T value)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.SortedSetRemoveAsync(key, ConvertJson(value));
+            return _connection.RedisDb.SortedSetRemoveAsync(key, ConvertJson(value));
         }
 
         /// <summary>
@@ -936,10 +962,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public async Task<long> SortedSetLengthAsync(string key)
+        public Task<long> SortedSetLengthAsync(string key)
         {
             key = AddSysCustomKey(key);
-            return await _connection.RedisDb.SortedSetLengthAsync(key);
+            return _connection.RedisDb.SortedSetLengthAsync(key);
         }
 
         #endregion 异步方法
@@ -953,10 +979,10 @@ namespace RedisAccessor
         /// </summary>
         /// <param name="key">redis key</param>
         /// <returns>是否删除成功</returns>
-        public bool KeyDelete(string key)
+        public Task<bool> KeyDeleteAsync(string key)
         {
             key = AddSysCustomKey(key);
-            return _connection.RedisDb.KeyDelete(key);
+            return _connection.RedisDb.KeyDeleteAsync(key);
         }
 
         /// <summary>
@@ -1090,6 +1116,10 @@ namespace RedisAccessor
 
         private T ConvertObj<T>(RedisValue value)
         {
+            //if (value.IsNull)
+            //{
+            //    return default(T);
+            //}
             return JsonConvert.DeserializeObject<T>(value);
         }
 

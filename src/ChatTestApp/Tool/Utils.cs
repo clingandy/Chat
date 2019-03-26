@@ -104,5 +104,17 @@ namespace ChatTestApp.Tool
 
         #endregion
 
+
+        /// <summary>
+        /// 去除空白
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public static byte[] RemoveSeparator(byte[] data)
+        {
+            List<byte> t = new List<byte>(data);
+            t.Remove(0x1e);
+            return t.ToArray();
+        }
     }
 }

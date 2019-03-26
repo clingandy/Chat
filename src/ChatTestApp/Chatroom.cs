@@ -23,12 +23,13 @@ namespace ChatTestApp
         volatile bool _isAddThreadTest = false;  //是否添加连接数
         readonly string _channelName;
         readonly string _userId;
+        readonly string _userName;
 
         private readonly ActionBlock<string> _reMsgActionBlockBatch;
         private ClientWebSocket _clientWebSocket;
         readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
-        public Chatroom(string channelName, string userId)
+        public Chatroom(string channelName, string userId, string userName)
         {
             InitializeComponent();
 
@@ -41,6 +42,7 @@ namespace ChatTestApp
                 userId = Guid.NewGuid().ToString().Replace("-","").ToLower();
             }
             _userId = userId;
+            _userName = userName;
             _channelName = channelName;
             _addThreadTestCount = 0;
 
@@ -118,8 +120,7 @@ namespace ChatTestApp
                 {
                     Type = (int)MsgTypeEnum.文本,
                     Data = content,
-                    Code = 200,
-                    UserId = _userId
+                    FromId = _userId
                 }.JsonSerialize();
 
                 //API发送消息
@@ -147,9 +148,9 @@ namespace ChatTestApp
             {
                 try
                 {
-                    ShowMsg("WebSocker连接服务器", isTest);
+                    ShowMsg("WebSocker连接服务器开始", isTest);
                     var ws = new ClientWebSocket();
-                    await ws.ConnectAsync(new Uri($"{AppConfig.WebSocketUrl}?{channelName}?{userId}"), CancellationToken.None);
+                    await ws.ConnectAsync(new Uri($"{AppConfig.WebSocketUrl}?{channelName}?{userId}?{_userName}"), CancellationToken.None);
                     ShowMsg("WebSocker连接服务器成功", isTest);
                     if (!isTest)
                     {
@@ -159,7 +160,7 @@ namespace ChatTestApp
                     {
                         var buffer = new ArraySegment<byte>(new byte[1024]);
                         await ws.ReceiveAsync(buffer, CancellationToken.None); //接受数据
-                        var msgStr = Encoding.UTF8.GetString(RemoveSeparator(buffer.ToArray()));
+                        var msgStr = Encoding.UTF8.GetString(Utils.RemoveSeparator(buffer.ToArray()));
                         if (!isTest)
                         {
                             _reMsgActionBlockBatch.Post(msgStr);
@@ -176,17 +177,6 @@ namespace ChatTestApp
             });
         }
 
-        /// <summary>
-        /// 去除空白
-        /// </summary>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        private static byte[] RemoveSeparator(byte[] data)
-        {
-            List<byte> t = new List<byte>(data);
-            t.Remove(0x1e);
-            return t.ToArray();
-        }
 
         /// <summary>
         /// 消息处理
@@ -200,21 +190,21 @@ namespace ChatTestApp
                 switch (msgEntity.Type)
                 {
                     case (int)MsgTypeEnum.文本:
-                        ShowMsg($"{msgEntity.UserId}:{msgEntity.Data}");
+                        ShowMsg($"{msgEntity.FromName}:{msgEntity.Data}");
                         break;
                     case (int)MsgTypeEnum.登出:
-                        if (_listBoxUserList.Items.Contains(msgEntity.UserId))
+                        if (_listBoxUserList.Items.Contains(msgEntity.FromId))
                         {
-                            _listBoxUserList.Items.Remove(msgEntity.UserId);
+                            _listBoxUserList.Items.Remove(msgEntity.FromId);
                             _listBoxUserList.Update();
                             ComputeRoomUserCount(-1);
                         }
                         ShowUserOnlineCount(msgEntity.Data);
                         break;
                     case (int) MsgTypeEnum.登录:
-                        if (!_listBoxUserList.Items.Contains(msgEntity.UserId))
+                        if (!_listBoxUserList.Items.Contains(msgEntity.FromId))
                         {
-                            _listBoxUserList.Items.Add(msgEntity.UserId);
+                            _listBoxUserList.Items.Add(msgEntity.FromId);
                             _listBoxUserList.Update();
                             ComputeRoomUserCount(1);
                         }
@@ -234,7 +224,7 @@ namespace ChatTestApp
         /// </summary>
         private void ShowMsg(string msg, bool isTest = false)
         {
-            if (isTest || string.IsNullOrWhiteSpace(msg) || msg == "[]")
+            if (isTest || string.IsNullOrWhiteSpace(msg))
             {
                 return;
             }
@@ -295,8 +285,7 @@ namespace ChatTestApp
             {
                 Type = (int) MsgTypeEnum.文本,
                 Data = "",
-                Code = 200,
-                UserId = _userId
+                FromId = _userId
             };
             Task.Factory.StartNew(async () =>
             {

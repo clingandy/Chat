@@ -7,9 +7,9 @@ namespace ChatWeb
 {
     public class AppBackgroundService : BackgroundService
     {
-        private readonly WebSocketService _webSocketService;
+        private readonly ChatService _webSocketService;
 
-        public AppBackgroundService(WebSocketService webSocketService)
+        public AppBackgroundService(ChatService webSocketService)
         {
             _webSocketService = webSocketService;
         }

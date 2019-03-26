@@ -24,9 +24,10 @@ namespace ChatWeb
                 var prefixKey = AppSettingsHelper.GetString("Redis:PrefixKey") ?? "prefix_";
                 return DependencyExtensions.UseRedis(redisAddr, redisDb, prefixKey);
             });
-            services.AddSingleton<WebSocketService>();
-            services.AddSingleton<RedisMessageManage>();
 
+            services.AddSingleton<ChatService>();
+            services.AddSingleton<IChannelManage, ChannelManage>();
+            services.AddSingleton<RedisMessageManage>();
             services.AddHostedService<AppBackgroundService>();
         }
 

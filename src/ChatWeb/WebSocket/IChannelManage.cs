@@ -13,7 +13,7 @@ namespace ChatWeb.WebSocket
         event Action<ISubscriber, IClient> EventClientAdded;
         event Action<ISubscriber, IClient> EventClientRemoved;
 
-        void ChannelClientAdd(string channel, IClient client);
+        void ChannelClientAdd(IClient client);
 
         void ChannelClientRemove(string channel, string clientId);
     }

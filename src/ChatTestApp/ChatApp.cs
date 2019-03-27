@@ -366,7 +366,16 @@ namespace ChatTestApp
         private void SetUnreadMsg(string userId, bool isReset)
         {
             var user = _userList.FirstOrDefault(t => t.UserId == userId);
-            if (user == null) return;
+            if (user == null)
+            {
+                user = new UserEntity()
+                {
+                    UserId = userId,
+                    UserName = userId,
+                    DisplayName = "新用户"
+                };
+                _userList.Add(user);
+            }
             if(isReset)
             {
                 user.UnreadMsgCount = 0;

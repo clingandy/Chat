@@ -22,17 +22,14 @@ namespace ChatWeb.WebSocket
             ChannelList = new ConcurrentDictionary<string, ISubscriber>();
         }
 
-        public void ChannelClientAdd(string channel, IClient client)
+        public void ChannelClientAdd(IClient client)
         {
             if (client == null)
             {
                 throw new ArgumentNullException(nameof(client));
             }
 
-            if (string.IsNullOrEmpty(channel))
-            {
-                channel = client.Channel;
-            }
+            var channel = client.Channel;
 
             if (!ChannelList.ContainsKey(channel))
             {
@@ -45,8 +42,6 @@ namespace ChatWeb.WebSocket
 
                 sub.EventClientAdded += (subscriber, client1) =>
                 {
-                    LoginNotify(subscriber, client1);
-
                     var handeler = EventClientAdded;
                     handeler?.Invoke(subscriber, client1);
                 };
@@ -60,10 +55,6 @@ namespace ChatWeb.WebSocket
                         handelerChannelRemoveed?.Invoke(this, subscriber);
 
                         subscriber.Dispose();
-                    }
-                    else
-                    {
-                        LoginNotify(subscriber, client1);
                     }
 
                     var handeler = EventClientRemoved;
@@ -79,23 +70,6 @@ namespace ChatWeb.WebSocket
             {
                 ChannelList[channel].ClientRemove(clientId);
             }
-        }
-
-
-        private void LoginNotify(ISubscriber iSubscriber, IClient client)
-        {
-            //if (client.ClientId == client.Channel)
-            //{
-            //    return;
-            //}
-            var msgModel = new MsgEntity
-            {
-                Type = client.IsSignOut ? (int)MsgTypeEnum.登出 : (int)MsgTypeEnum.登录,
-                Data = iSubscriber.GetClientCount().ToString(),
-                FromId = client.ClientId,
-                FromName = client.ClientName
-            };
-            iSubscriber.NotifyAllClient(msgModel);
         }
 
         public void Dispose()

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using ChatWeb.Model;
@@ -31,11 +32,17 @@ namespace ChatWeb.WebSocket
 
             _addRemoveBlock = new ActionBlock<IClient>(client =>
             {
+                //限制1秒上下线用户数量，内存换带宽
+                Thread.Sleep(50);
+
                 ClientPost(client);
             });
 
             _sendMsgActionBlockBatch = new ActionBlock<MsgEntity>(entity =>
             {
+                //限制1秒发送消息数量，内存换带宽
+                Thread.Sleep(50);
+
                 var msg = entity.JsonSerialize();
                 Parallel.ForEach(DicClientSockets, client =>
                 {
@@ -63,6 +70,14 @@ namespace ChatWeb.WebSocket
             }
             else
             {
+                // 非聊天室通知下线
+                if (client.ClientId == client.Channel && DicClientSockets.ContainsKey(client.ClientId))
+                {
+                    var tempClient = DicClientSockets[client.ClientId];
+                    tempClient?.Socket?.Close();
+                }
+
+                //聊天室不用考虑是否已经存在
                 DicClientSockets[client.ClientId] = client;
 
                 var handler = EventClientAdded;
@@ -72,7 +87,10 @@ namespace ChatWeb.WebSocket
 
         public void NotifyAllClient(MsgEntity model)
         {
-            _sendMsgActionBlockBatch.Post(model);
+            Task.Factory.StartNew(() =>
+            {
+                _sendMsgActionBlockBatch.Post(model);
+            });
         }
 
         public void ClientAdd(IClient client)

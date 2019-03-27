@@ -63,7 +63,7 @@ namespace ChatWeb.WebSocket
         {
             var client = new Client(socket);
 
-            _channelManage.ChannelClientAdd(string.Empty, client);
+            _channelManage.ChannelClientAdd(client);
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace ChatWeb.WebSocket
             // 添加渠道用户后
             _channelManage.EventClientAdded += (subscriber, client) =>
             {
-                //client.EventMsgSended += subscriber.NotifyAllClient;    //单机情况，接受到消息后直接转发
+                //client.EventMsgSended += subscriber.NotifyAllClient;    //聊天室单机非Redis模式，接受到消息后直接转发
 
                 client.EventMsgSended += msgEntity =>
                 {
@@ -116,7 +116,6 @@ namespace ChatWeb.WebSocket
                     }
                     else
                     {
-                        
                         switch (msgEntity.Type)
                         {
                             case (int)MsgTypeEnum.文本:
@@ -131,6 +130,8 @@ namespace ChatWeb.WebSocket
                     
                 };
 
+                LoginNotify(subscriber, client);
+
                 if (client.ClientId != client.Channel)
                 {
                     _redisMessageManage.AddChannelSubscribeUser(client.Channel, client.ClientId);   // 必须异步
@@ -143,11 +144,36 @@ namespace ChatWeb.WebSocket
             // 移除渠道用户后
             _channelManage.EventClientRemoved += (subscriber, client) =>
             {
+                LoginNotify(subscriber, client);
+
                 if (client.ClientId != client.Channel)
                 {
                     _redisMessageManage.DelChannelSubscribeUser(client.Channel, client.ClientId);   // 必须异步
                 }
+                else
+                {
+                    _redisMessageManage.DelAllMsg(client.ClientId);
+                }
             };
+        }
+
+        /// <summary>
+        /// 发送登录登出信息
+        /// </summary>
+        /// <param name="iSubscriber"></param>
+        /// <param name="client"></param>
+        private void LoginNotify(ISubscriber iSubscriber, IClient client)
+        {
+            var msgModel = new MsgEntity
+            {
+                Type = client.IsSignOut ? (int)MsgTypeEnum.登出 : (int)MsgTypeEnum.登录,
+                Data = iSubscriber.GetClientCount().ToString(),
+                FromId = client.ClientId,
+                FromName = client.ClientName
+            };
+            _redisMessageManage.SendMsg(client.Channel, msgModel);
+
+            //iSubscriber.NotifyAllClient(msgModel); // 聊天室单机非Redis模式
         }
 
         /// <summary>

@@ -174,7 +174,7 @@ namespace ChatTestApp
                     Thread.Sleep(5000);
                     GetMsgByWebSocket(channelName, userId, isTest);
                 }
-            });
+            }, _tokenSource.Token);
         }
 
 

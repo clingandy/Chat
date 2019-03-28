@@ -48,11 +48,9 @@ namespace ChatWeb.WebSocket
             _sendMsgActionBlock = new ActionBlock<MsgEntity>(entity =>
             {
                 //限制同时发送消息数量，限制带宽
-                //var _count = GetClientCount();
-                SpinWait.SpinUntil(() => _count < 100, _count / 100 * _spanTime);
                 Configure.Smp.Wait();
 
-                //合并后发送
+                //发送
                 var msg = entity.JsonSerialize();
                 Parallel.ForEach(DicClientSockets, client =>
                 {
@@ -60,6 +58,7 @@ namespace ChatWeb.WebSocket
                 });
 
                 Configure.Smp.Release();
+                SpinWait.SpinUntil(() => _count < 100, _count / 100 * _spanTime);
             });
         }
 
@@ -67,34 +66,40 @@ namespace ChatWeb.WebSocket
         {
             if (client.IsSignOut)
             {
-                Interlocked.Add(ref _count, -1);
-
                 if (DicClientSockets.Remove(client.ClientId, out IClient temp))
                 {
+                    Interlocked.Add(ref _count, -1);
+
                     client = temp;  //补充完整信息
                     client.IsSignOut = true;
+
+                    var handler = EventClientRemoved;
+                    handler?.Invoke(this, client);
                 }
 
                 //IsEmpty = DicClientSockets.IsEmpty;
                 IsEmpty = _count <= 0;
 
-                var handler = EventClientRemoved;
-                handler?.Invoke(this, client);
-
                 client.Dispose();
             }
             else
             {
-                Interlocked.Add(ref _count, 1);
-
-                // 非聊天室通知下线
-                if (client.ClientId == client.Channel && DicClientSockets.ContainsKey(client.ClientId))
+                if (DicClientSockets.ContainsKey(client.ClientId))
                 {
                     var tempClient = DicClientSockets[client.ClientId];
-                    tempClient?.Socket?.Close();
+                    if (tempClient?.Socket != null)
+                    {
+                        tempClient.Socket.OnClose = () => { };  //移除委托
+                        tempClient.Socket.OnError = e => { };  //移除委托
+                        // 可在这里发送占用消息
+                        tempClient.Socket.Close();
+                    }
+                }
+                else
+                {
+                    Interlocked.Add(ref _count, 1);
                 }
 
-                //聊天室不用考虑是否已经存在
                 DicClientSockets[client.ClientId] = client;
 
                 var handler = EventClientAdded;

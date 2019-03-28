@@ -11,9 +11,13 @@ namespace ChatWeb.WebSocket
 {
     public class Subscriber : ISubscriber, IDisposable
     {
+        private int _count;
+        private int _spanTime;
+
         //防止并发
         private readonly ActionBlock<IClient> _addRemoveBlock;
-        private readonly ActionBlock<MsgEntity> _sendMsgActionBlockBatch;
+        //private readonly BatchBlock<MsgEntity> _sendMsgBatchBlock;
+        private readonly ActionBlock<MsgEntity> _sendMsgActionBlock;
 
         public string ChannelName { get;}
 
@@ -28,26 +32,34 @@ namespace ChatWeb.WebSocket
         {
             ChannelName = channelName;
 
+            _spanTime = AppSettingsHelper.GetInt32("SendMsgSpanTime", 5);
+
             DicClientSockets = new ConcurrentDictionary<string, IClient>();
 
             _addRemoveBlock = new ActionBlock<IClient>(client =>
             {
-                //限制1秒上下线用户数量，内存换带宽
-                Thread.Sleep(50);
-
                 ClientPost(client);
             });
 
-            _sendMsgActionBlockBatch = new ActionBlock<MsgEntity>(entity =>
-            {
-                //限制1秒发送消息数量，内存换带宽
-                Thread.Sleep(50);
+            // 队列超过5K ， 不在入队
+            //_sendMsgBatchBlock = new BatchBlock<MsgEntity>(1, new GroupingDataflowBlockOptions{Greedy = true, BoundedCapacity = 5000});
+            //_sendMsgBatchBlock.LinkTo(_sendMsgActionBlock);
 
+            _sendMsgActionBlock = new ActionBlock<MsgEntity>(entity =>
+            {
+                //限制同时发送消息数量，限制带宽
+                //var _count = GetClientCount();
+                SpinWait.SpinUntil(() => _count < 100, _count / 100 * _spanTime);
+                Configure.Smp.Wait();
+
+                //合并后发送
                 var msg = entity.JsonSerialize();
                 Parallel.ForEach(DicClientSockets, client =>
                 {
                     client.Value.MsgReceive(msg);
                 });
+
+                Configure.Smp.Release();
             });
         }
 
@@ -55,13 +67,16 @@ namespace ChatWeb.WebSocket
         {
             if (client.IsSignOut)
             {
+                Interlocked.Add(ref _count, -1);
+
                 if (DicClientSockets.Remove(client.ClientId, out IClient temp))
                 {
                     client = temp;  //补充完整信息
                     client.IsSignOut = true;
                 }
 
-                IsEmpty = DicClientSockets.IsEmpty;
+                //IsEmpty = DicClientSockets.IsEmpty;
+                IsEmpty = _count <= 0;
 
                 var handler = EventClientRemoved;
                 handler?.Invoke(this, client);
@@ -70,6 +85,8 @@ namespace ChatWeb.WebSocket
             }
             else
             {
+                Interlocked.Add(ref _count, 1);
+
                 // 非聊天室通知下线
                 if (client.ClientId == client.Channel && DicClientSockets.ContainsKey(client.ClientId))
                 {
@@ -87,38 +104,31 @@ namespace ChatWeb.WebSocket
 
         public void NotifyAllClient(MsgEntity model)
         {
-            Task.Factory.StartNew(() =>
-            {
-                _sendMsgActionBlockBatch.Post(model);
-            });
+            _sendMsgActionBlock.Post(model);
         }
 
         public void ClientAdd(IClient client)
         {
-            Task.Factory.StartNew(() =>
-            {
-                client.IsSignOut = false;
-                _addRemoveBlock.Post(client);
-            });
+            client.IsSignOut = false;
+            _addRemoveBlock.Post(client);
         }
 
         public void ClientRemove(string clientId)
         {
-            Task.Factory.StartNew(() =>
-            {
-                var client = new Client(clientId, true);
-                _addRemoveBlock.Post(client);
-            });
+            var client = new Client(clientId, true);
+            _addRemoveBlock.Post(client);
         }
 
         public bool CheckClientIsEmpty()
         {
-            return DicClientSockets.IsEmpty;
+            //return DicClientSockets.IsEmpty;
+            return _count <= 0;
         }
 
         public int GetClientCount()
         {
-            return DicClientSockets.Count;
+            //return DicClientSockets.Count;
+            return _count;
         }
 
         public void Dispose()

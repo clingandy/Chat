@@ -9,7 +9,7 @@ namespace ChatWeb.Model
 
         public string UserName { get; set; }
 
-        public bool IsOnLine { get; set; }
+        public int Status { get; set; }
         
     }
 }

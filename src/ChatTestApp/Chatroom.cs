@@ -123,14 +123,6 @@ namespace ChatTestApp
                     FromId = _userId
                 }.JsonSerialize();
 
-                //API发送消息
-                //var task = new Task(() =>
-                //{
-                //    Utils.GetData($"{AppConfig.Url}/SendMsg?channel={_channelName}&msg={content}");
-                //    //ShowMsg(msg);
-                //});
-                //task.Start();
-
                 //WebSocket发送消息
                 var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(content));
                 _clientWebSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
@@ -158,7 +150,7 @@ namespace ChatTestApp
                     } 
                     while (true)
                     {
-                        var buffer = new ArraySegment<byte>(new byte[1024]);
+                        var buffer = new ArraySegment<byte>(new byte[1024 * 5]);
                         await ws.ReceiveAsync(buffer, CancellationToken.None); //接受数据
                         var msgStr = Encoding.UTF8.GetString(Utils.RemoveSeparator(buffer.ToArray()));
                         if (!isTest)
@@ -186,34 +178,41 @@ namespace ChatTestApp
         {
             try
             {
-                var msgEntity = msgStr.JsonDeserialize<MsgEntity>();
-                switch (msgEntity.Type)
+                var msgEntitys = msgStr.JsonDeserialize<MsgEntity[]>();
+                foreach (var msgEntity in msgEntitys)
                 {
-                    case (int)MsgTypeEnum.文本:
-                        ShowMsg($"{msgEntity.FromName}:{msgEntity.Data}");
-                        break;
-                    case (int)MsgTypeEnum.登出:
-                        if (_listBoxUserList.Items.Contains(msgEntity.FromId))
-                        {
-                            _listBoxUserList.Items.Remove(msgEntity.FromId);
-                            _listBoxUserList.Update();
-                            ComputeRoomUserCount(-1);
-                        }
-                        ShowUserOnlineCount(msgEntity.Data);
-                        break;
-                    case (int) MsgTypeEnum.登录:
-                        if (!_listBoxUserList.Items.Contains(msgEntity.FromId))
-                        {
-                            _listBoxUserList.Items.Add(msgEntity.FromId);
-                            _listBoxUserList.Update();
-                            ComputeRoomUserCount(1);
-                        }
-                        ShowUserOnlineCount(msgEntity.Data);
-                        break;
+                    switch (msgEntity.Type)
+                    {
+                        case (int)MsgTypeEnum.文本:
+                            ShowMsg($"{msgEntity.FromName}-{msgEntity.CurTime}：{msgEntity.Data}");
+                            break;
+                        case (int)MsgTypeEnum.登出:
+                            if (_listBoxUserList.Items.Contains(msgEntity.FromId))
+                            {
+                                _listBoxUserList.Items.Remove(msgEntity.FromId);
+                                _listBoxUserList.Update();
+                                ComputeRoomUserCount(-1);
+                            }
+                            ShowUserOnlineCount(msgEntity.Data);
+                            break;
+                        case (int)MsgTypeEnum.登录:
+                            if (!_listBoxUserList.Items.Contains(msgEntity.FromId))
+                            {
+                                _listBoxUserList.Items.Add(msgEntity.FromId);
+                                _listBoxUserList.Update();
+                                ComputeRoomUserCount(1);
+                            }
+                            ShowUserOnlineCount(msgEntity.Data);
+                            break;
+                        case (int)MsgTypeEnum.系统:
+                            ShowMsg($"系统消息-{msgEntity.CurTime}：{msgEntity.Data}");
+                            break;
+                    }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                ShowMsg("错误信息："+ ex.Message);
                 ShowMsg(msgStr);
             }
             

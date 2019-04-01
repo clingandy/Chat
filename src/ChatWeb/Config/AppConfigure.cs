@@ -1,11 +1,11 @@
-﻿
-using System.Threading;
+﻿using System.Threading;
+using ChatWeb.Tool;
 
-namespace ChatWeb.Tool
+namespace ChatWeb.Config
 {
-    public class Configure
+    public class AppConfigure
     {
-        public Configure()
+        public AppConfigure()
         {
             Smp = new SemaphoreSlim(AppSettingsHelper.GetInt32("MaxDegreeOfParallelism", 100));
         }

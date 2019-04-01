@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ChatWeb.Enum;
 using ChatWeb.Model;
 using ChatWeb.Tool;
 using RedisAccessor;
@@ -216,7 +217,7 @@ namespace ChatWeb.Redis
             {
                 var user = new UserEntity()
                 {
-                    IsOnLine = false,
+                    Status = (int)ClientStatusEnum.OnLine,
                     UserId = Guid.NewGuid().ToString().Replace("-", "").ToLower(),
                     UserName = userName
                 };

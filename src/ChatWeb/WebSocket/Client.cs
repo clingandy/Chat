@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Web;
+using ChatWeb.Enum;
 using ChatWeb.Model;
 using ChatWeb.Tool;
 using Fleck;
@@ -15,11 +16,13 @@ namespace ChatWeb.WebSocket
 
         public string Channel { get; }
 
-        public bool IsSignOut { get; set; }
+        public ClientStatusEnum Status { get; set; } = ClientStatusEnum.OnLine;
 
-        public IWebSocketConnection Socket { get; }
+        public IWebSocketConnection Socket { get; set; }
 
-        public event Action<MsgEntity> EventMsgSended;
+        public event Action<IClient, MsgEntity> EventMsgSended;
+
+        private DateTime _nextSendMsgTime = DateTime.Now;
 
         public Client(IWebSocketConnection socket)
         {
@@ -27,6 +30,7 @@ namespace ChatWeb.WebSocket
             {
                 return;
             }
+
             var parameter = socket.ConnectionInfo.Path.Replace("/?", "").Split("?");
             Channel = parameter[0];
             ClientId = parameter[1];
@@ -40,19 +44,31 @@ namespace ChatWeb.WebSocket
             };
         }
 
-        public Client(string clientId, bool isSignOut)
+        /// <summary>
+        /// 登出用
+        /// </summary>
+        public Client(string clientId, ClientStatusEnum status)
         {
             ClientId = clientId;
-            IsSignOut = isSignOut;
+            Status = status;
         }
 
         public void MsgSend(MsgEntity msg)
         {
+            //if (_nextSendMsgTime > DateTime.Now)
+            //{
+            //    msg.Type = (int)MsgTypeEnum.禁止发送;
+            //}
+            //else
+            //{
+            //    _nextSendMsgTime = DateTime.Now.AddSeconds(1);
+            //}
+
             msg.FromId = ClientId;
             msg.FromName = ClientName;
             msg.CurTime = DateTime.Now.ConvertDateTimeToInt();
             var handler = EventMsgSended;
-            handler?.Invoke(msg);
+            handler?.Invoke(this, msg);
         }
 
         public void MsgReceive(string msg)

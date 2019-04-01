@@ -166,7 +166,7 @@ namespace ChatTestApp
 
                     while (true)
                     {
-                        var buffer = new ArraySegment<byte>(new byte[1024]);
+                        var buffer = new ArraySegment<byte>(new byte[1024 * 5]);
                         await _clientWebSocket.ReceiveAsync(buffer, CancellationToken.None); //接受数据
                         var msgStr = Encoding.UTF8.GetString(Utils.RemoveSeparator(buffer.ToArray()));
                         MsgHandle(msgStr);
@@ -287,43 +287,50 @@ namespace ChatTestApp
         /// <param name="msgStr"></param>
         private void MsgHandle(string msgStr)
         {
-            ShowMsg(_sysId, msgStr);
+            //ShowMsg(_sysId, msgStr);
             try
             {
-                var msgEntity = msgStr.JsonDeserialize<MsgEntity>();
-                switch (msgEntity.Type)
+                var msgEntitys = msgStr.JsonDeserialize<MsgEntity[]>();
+                foreach (var msgEntity in msgEntitys)
                 {
-                    case (int)MsgTypeEnum.文本:
-                        ShowMsg(msgEntity.FromId, $"{msgEntity.FromName}：{msgEntity.Data}");
-                        break;
-                    case (int)MsgTypeEnum.登出:
-                        
-                        break;
-                    case (int)MsgTypeEnum.登录:
-                        
-                        break;
-                    case (int)MsgTypeEnum.请求添加好友:
-                        ShowMsg(_sysId, $"{msgEntity.FromName}：请求添加为好友");
-                        break;
-                    case (int)MsgTypeEnum.拒接添加好友:
-                        ShowMsg(_sysId, $"{msgEntity.FromName}：拒接你的添加好友申请");
-                        break;
-                    case (int)MsgTypeEnum.获取好友数据:
-                        var userList = msgEntity.Data.JsonDeserialize<List<UserEntity>>();
-                        userList = userList.Where(t => t.UserId != _userId).ToList();
-                        foreach (var item in userList)
-                        {
-                            item.DisplayName = item.UserName;
-                            _userList.Add(item);
-                        }
-                        break;
-                    case (int)MsgTypeEnum.获取聊天室数据:
-                        ShowMsg(_sysId, "获取聊天室数据成功");
-                        break;
+                    switch (msgEntity.Type)
+                    {
+                        case (int)MsgTypeEnum.文本:
+                            ShowMsg(msgEntity.FromId, $"{msgEntity.FromName}-{msgEntity.CurTime}：{msgEntity.Data}");
+                            break;
+                        case (int)MsgTypeEnum.登出:
+
+                            break;
+                        case (int)MsgTypeEnum.登录:
+
+                            break;
+                        case (int)MsgTypeEnum.系统:
+                            ShowMsg(_sysId, $"系统消息-{msgEntity.CurTime}：{msgEntity.Data}");
+                            break;
+                        case (int)MsgTypeEnum.请求添加好友:
+                            ShowMsg(_sysId, $"{msgEntity.FromName}：请求添加为好友");
+                            break;
+                        case (int)MsgTypeEnum.拒接添加好友:
+                            ShowMsg(_sysId, $"{msgEntity.FromName}：拒接你的添加好友申请");
+                            break;
+                        case (int)MsgTypeEnum.获取好友数据:
+                            var userList = msgEntity.Data.JsonDeserialize<List<UserEntity>>();
+                            userList = userList.Where(t => t.UserId != _userId).ToList();
+                            foreach (var item in userList)
+                            {
+                                item.DisplayName = item.UserName;
+                                _userList.Add(item);
+                            }
+                            break;
+                        case (int)MsgTypeEnum.获取聊天室数据:
+                            ShowMsg(_sysId, "获取聊天室数据成功");
+                            break;
+                    }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                ShowMsg(_sysId, "错误信息：" + ex.Message);
                 ShowMsg(_sysId, msgStr);
             }
 

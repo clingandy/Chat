@@ -1,4 +1,5 @@
 ﻿using System;
+using ChatWeb.Enum;
 using ChatWeb.Model;
 using Fleck;
 
@@ -12,12 +13,11 @@ namespace ChatWeb.WebSocket
 
         string Channel { get; }
 
-        bool IsSignOut { get; set; }
+        ClientStatusEnum Status { get; set; }
 
-        IWebSocketConnection Socket { get; }
+        IWebSocketConnection Socket { get; set; }
 
-
-        event Action<MsgEntity> EventMsgSended;
+        event Action<IClient, MsgEntity> EventMsgSended;
 
         //event Action<IClient, MsgEntity> EvenReceiveMsg;
 

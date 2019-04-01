@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Fleck;
 using ChatWeb.Model;
 using ChatWeb.Redis;
 using ChatWeb.Tool;
 using System.Linq;
+using ChatWeb.Enum;
 
 namespace ChatWeb.WebSocket
 {
@@ -107,8 +105,13 @@ namespace ChatWeb.WebSocket
             {
                 //client.EventMsgSended += subscriber.NotifyAllClient;    //聊天室单机非Redis模式，接受到消息后直接转发
 
-                client.EventMsgSended += msgEntity =>
+                client.EventMsgSended += (that ,msgEntity) =>
                 {
+                    if (that.Status != ClientStatusEnum.OnLine || msgEntity.Type == (int)MsgTypeEnum.禁止发送)
+                    {
+                        SystemNotify(that, "你已经被禁言 或 发言过于频繁");
+                        return;
+                    }
                     // 判断是个人群聊还是 聊天室
                     if (client.Channel != client.ClientId)
                     {
@@ -123,7 +126,7 @@ namespace ChatWeb.WebSocket
                                 _redisMessageManage.SendMsg(msgEntity.ToId, msgEntity, true);
                                 break;
                             case (int)MsgTypeEnum.请求添加好友:
-                                _redisMessageManage.AddUser(new UserEntity { IsOnLine = false, UserId = msgEntity.ToId, UserName = msgEntity.Data });
+                                _redisMessageManage.AddUser(new UserEntity { Status = (int)ClientStatusEnum.OnLine, UserId = msgEntity.ToId, UserName = msgEntity.Data });
                                 break;
                         }
                     }
@@ -166,7 +169,7 @@ namespace ChatWeb.WebSocket
         {
             var msgModel = new MsgEntity
             {
-                Type = client.IsSignOut ? (int)MsgTypeEnum.登出 : (int)MsgTypeEnum.登录,
+                Type = client.Status == ClientStatusEnum.SignOut ? (int)MsgTypeEnum.登出 : (int)MsgTypeEnum.登录,
                 Data = iSubscriber.GetClientCount().ToString(),
                 FromId = client.ClientId,
                 FromName = client.ClientName
@@ -174,6 +177,25 @@ namespace ChatWeb.WebSocket
             _redisMessageManage.SendMsg(client.Channel, msgModel);
 
             //iSubscriber.NotifyAllClient(msgModel); // 聊天室单机非Redis模式
+        }
+
+        /// <summary>
+        /// 发送系统信息
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="msg"></param>
+        private void SystemNotify(IClient client, string msg)
+        {
+            var msgModel = new MsgEntity
+            {
+                MsgId = Guid.NewGuid().ToString().Replace("-", "").ToLower(),
+                Type = (int)MsgTypeEnum.系统,
+                Data = msg,
+                CurTime = DateTime.Now.ConvertDateTimeToInt(),
+                FromId = client.ClientId,
+                FromName = client.ClientName
+            };
+            client.Socket?.Send(new []{ msgModel }.JsonSerialize());
         }
 
         /// <summary>
@@ -188,17 +210,18 @@ namespace ChatWeb.WebSocket
                 MsgId = Guid.NewGuid().ToString().Replace("-", "").ToLower(),
                 Type = (int)MsgTypeEnum.获取好友数据,
                 Data = userListStr.JsonSerialize(),
+                CurTime = DateTime.Now.ConvertDateTimeToInt(),
                 FromId = client.ClientId,
                 ToId = string.Empty
-            }.JsonSerialize();
-            client.Socket?.Send(userListMsg);
+            };
+            client.Socket?.Send(new []{ userListMsg }.JsonSerialize());
 
 
             var msgList = await _redisMessageManage.GetMsgList(client.ClientId);
             msgList = msgList.OrderBy(t => t.CurTime).ToList();
             foreach (var msg in msgList)
             {
-                client.Socket?.Send(msg.JsonSerialize());
+                client.Socket?.Send(new[] { msg }.JsonSerialize());
             }
             await _redisMessageManage.DelAllMsg(client.ClientId);
 

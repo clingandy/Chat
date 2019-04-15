@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ChatTestApp
@@ -17,6 +14,8 @@ namespace ChatTestApp
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new ChatApp());
+
+            //Application.Run(new Chatroom("chatroom", Guid.NewGuid().ToString().Replace("-", "").ToLower(), "zhangsan"));
         }
     }
 }

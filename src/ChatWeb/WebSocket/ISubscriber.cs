@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Threading.Tasks.Dataflow;
 using ChatWeb.Model;
 
 namespace ChatWeb.WebSocket
@@ -8,8 +7,6 @@ namespace ChatWeb.WebSocket
     public interface ISubscriber
     {
         string ChannelName { get; }
-
-        bool IsEmpty { get;}
 
         ConcurrentDictionary<string, IClient> DicClientSockets { get;}
 
@@ -22,10 +19,6 @@ namespace ChatWeb.WebSocket
         void ClientAdd(IClient client);
 
         void ClientRemove(string clientId);
-
-        bool CheckClientIsEmpty();
-
-        int GetClientCount();
 
         void Dispose();
     }

@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using ChatWeb.Model;
 
 namespace ChatWeb.WebSocket
 {
     public class ChannelManage : IChannelManage, IDisposable
     {
-        
-
         public ConcurrentDictionary<string, ISubscriber> ChannelList { get; }
 
         public event Action<IChannelManage, ISubscriber> EventChannelAdded;
@@ -31,37 +28,46 @@ namespace ChatWeb.WebSocket
 
             var channel = client.Channel;
 
-            if (!ChannelList.ContainsKey(channel))
+            ChannelList.AddOrUpdate(channel,
+                s => AddSubscriberChannel(channel),
+                (s, subscriber) =>
+                {
+                    subscriber.ClientAdd(client);
+                    return subscriber;
+                });
+        }
+
+        private ISubscriber AddSubscriberChannel(string channel)
+        {
+            var sub = new Subscriber(channel);
+            ChannelList[channel] = sub;
+
+            //添加Channel后的处理事件
+            var handelerChannelAdded = EventChannelAdded;
+            handelerChannelAdded?.Invoke(this, sub);
+
+            sub.EventClientAdded += (subscriber, client1) =>
             {
-                var sub = new Subscriber(channel);
-                ChannelList[channel] = sub;
-
-                //添加Channel后的处理事件
-                var handelerChannelAdded = EventChannelAdded;
-                handelerChannelAdded?.Invoke(this, sub);
-
-                sub.EventClientAdded += (subscriber, client1) =>
+                var handeler = EventClientAdded;
+                handeler?.Invoke(subscriber, client1);
+            };
+            sub.EventClientRemoved += (subscriber, client1) =>
+            {
+                if (subscriber.DicClientSockets.IsEmpty)
                 {
-                    var handeler = EventClientAdded;
-                    handeler?.Invoke(subscriber, client1);
-                };
-                sub.EventClientRemoved += (subscriber, client1) =>
-                {
-                    if (subscriber.IsEmpty)
-                    {
-                        ChannelList.Remove(subscriber.ChannelName, out _);
-                        //移除Channel后的处理事件
-                        var handelerChannelRemoveed = EventChannelRemoveed;
-                        handelerChannelRemoveed?.Invoke(this, subscriber);
+                    ChannelList.Remove(subscriber.ChannelName, out _);
+                    //移除Channel后的处理事件
+                    var handelerChannelRemoveed = EventChannelRemoveed;
+                    handelerChannelRemoveed?.Invoke(this, subscriber);
 
-                        subscriber.Dispose();
-                    }
+                    subscriber.Dispose();
+                }
 
-                    var handeler = EventClientRemoved;
-                    handeler?.Invoke(subscriber, client1);
-                };
-            }
-            ChannelList[channel].ClientAdd(client);
+                var handeler = EventClientRemoved;
+                handeler?.Invoke(subscriber, client1);
+            };
+
+            return sub;
         }
 
         public void ChannelClientRemove(string channel, string clientId)
@@ -74,7 +80,10 @@ namespace ChatWeb.WebSocket
 
         public void Dispose()
         {
-            
+            EventChannelAdded = null;
+            EventChannelRemoveed = null;
+            EventClientAdded = null;
+            EventClientRemoved = null;
         }
     }
 }

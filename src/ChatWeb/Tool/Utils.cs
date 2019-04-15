@@ -12,11 +12,11 @@ namespace ChatWeb.Tool
         /// </summary>  
         /// <param name="time">时间</param>
         /// <returns>long</returns>  
-        public static long ConvertDateTimeToInt(this DateTime time)
+        public static int ConvertDateTimeToInt(this DateTime time)
         {
             var startTime = new DateTime(1970, 1, 1, 0, 0, 0, 0).ToLocalTime();
             var t = (time.Ticks - startTime.Ticks) / 10000000;   //除10000调整为10位      
-            return t;
+            return (int)t;
         }
     }
 }

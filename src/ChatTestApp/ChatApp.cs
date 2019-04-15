@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Linq;
-using System.Net.WebSockets;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ChatTestApp.Model;
 using ChatTestApp.Tool;
+using ChatTestApp.WebSocket;
 
 
 namespace ChatTestApp
@@ -22,10 +21,14 @@ namespace ChatTestApp
 
         private string _curToId;    //当前选择用户ID
         private string _sysId;      //系统ID
-        private ClientWebSocket _clientWebSocket;
+        private bool _isAddFriend = false;  //是否已经添加朋友列表
+        private WebSocketHelper _webSocketHelper;
 
         private BindingList<UserEntity> _userList;
         private ConcurrentDictionary<string, BindingList<string>> _dicMsgList;
+        
+        // 调试模式需要用下面对象更新UI，目前只可以在非调试模式运行
+        //private SynchronizationContext _synchronization;
 
         public ChatApp()
         {
@@ -34,6 +37,8 @@ namespace ChatTestApp
             //ClientSocket.Instance.onGetReceive = ShowMsg;
             //ClientSocket.Instance.ConnectServer("127.0.0.1", 8078);
             //ClientSocket.Instance.SendMessage("");
+
+            // _synchronization = SynchronizationContext.Current;
 
             _tabPageChat.Enabled = false;
             _tabPageChatroom.Enabled = false;
@@ -143,44 +148,23 @@ namespace ChatTestApp
         #region IM
 
         /// <summary>
-        /// 初始化
-        /// </summary>
-        private void InitIM()
-        {
-            ConnWebSocket();
-        }
-
-        /// <summary>
         /// 连接webSocket ，个人的渠道就是自己的ID
         /// </summary>
         private void ConnWebSocket()
         {
-            Task.Factory.StartNew(async () =>
-            {
-                try
-                {
-                    _dicMsgList[_sysId].Add("WebSocker连接服务器开始");
-                    _clientWebSocket = new ClientWebSocket();
-                    await _clientWebSocket.ConnectAsync(new Uri($"{AppConfig.WebSocketUrl}?{_userId}?{_userId}?{_userName}"), CancellationToken.None);
-                    _dicMsgList[_sysId].Add("WebSocker连接服务器成功");
+            _dicMsgList[_sysId].Add("WebSocker连接服务器开始");
 
-                    while (true)
-                    {
-                        var buffer = new ArraySegment<byte>(new byte[1024 * 5]);
-                        await _clientWebSocket.ReceiveAsync(buffer, CancellationToken.None); //接受数据
-                        var msgStr = Encoding.UTF8.GetString(Utils.RemoveSeparator(buffer.ToArray()));
-                        MsgHandle(msgStr);
-                    }
-                }
-                catch (Exception e)
-                {
-                    _clientWebSocket = null;
-                    _dicMsgList[_sysId].Add($"WebSocker连接出错，错误信息：{e.Message}");
-                    //重连
-                    Thread.Sleep(5000);
-                    ConnWebSocket();
-                }
-            });
+            _webSocketHelper = new WebSocketHelper(_userId, _userId, _userName, false);
+            _webSocketHelper.EventError += e =>
+            {
+                _dicMsgList[_sysId].Add($"WebSocker连接出错，错误信息：{e.Message}");
+            };
+            _webSocketHelper.EventReceiveMsg += MsgHandle;
+
+            _webSocketHelper.ConnServer();
+
+            _dicMsgList[_sysId].Add("WebSocker连接服务器成功");
+
         }
 
         /// <summary>
@@ -204,8 +188,7 @@ namespace ChatTestApp
                 }.JsonSerialize();
 
                 //WebSocket发送消息
-                var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(content));
-                _clientWebSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+                _webSocketHelper.SendMsg(content);
 
                 ShowMsg(_sysId, $"你发送消息请求添加[{name}]为好友，默认直接添加好友");
 
@@ -242,8 +225,7 @@ namespace ChatTestApp
                 }.JsonSerialize();
 
                 //WebSocket发送消息
-                var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(content));
-                _clientWebSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+                _webSocketHelper?.SendMsg(content);
 
                 ShowMsg(curToId, $"{_userName}：{msg}");
             }
@@ -314,12 +296,17 @@ namespace ChatTestApp
                             ShowMsg(_sysId, $"{msgEntity.FromName}：拒接你的添加好友申请");
                             break;
                         case (int)MsgTypeEnum.获取好友数据:
-                            var userList = msgEntity.Data.JsonDeserialize<List<UserEntity>>();
-                            userList = userList.Where(t => t.UserId != _userId).ToList();
-                            foreach (var item in userList)
+                            if (!_isAddFriend)
                             {
-                                item.DisplayName = item.UserName;
-                                _userList.Add(item);
+                                var userList = msgEntity.Data.JsonDeserialize<List<UserEntity>>();
+                                userList = userList.Where(t => t.UserId != _userId).ToList();
+                                foreach (var item in userList)
+                                {
+                                    item.DisplayName = item.UserName;
+                                    _userList.Add(item);
+                                }
+
+                                _isAddFriend = true;
                             }
                             break;
                         case (int)MsgTypeEnum.获取聊天室数据:
@@ -361,8 +348,6 @@ namespace ChatTestApp
             {
                 ScrollListBoxMsgs(false);
             }
-            
-
         }
 
         /// <summary>
@@ -476,7 +461,7 @@ namespace ChatTestApp
             // 获取聊天室频道
             GetChannelList();
             //初始化IM
-            InitIM();
+            ConnWebSocket();
 
             //绑定数据
             _listBoxMsgs.DataSource = _dicMsgList[_sysId];

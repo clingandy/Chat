@@ -4,6 +4,7 @@ using ChatWeb.Model;
 using ChatWeb.Redis;
 using ChatWeb.Tool;
 using System.Linq;
+using System.Threading.Tasks;
 using ChatWeb.Enum;
 
 namespace ChatWeb.WebSocket
@@ -31,6 +32,7 @@ namespace ChatWeb.WebSocket
 
             var server = new WebSocketServer("ws://0.0.0.0:7091");
             server.RestartAfterListenError = true;
+            server.ListenerSocket.NoDelay = true;
 
             server.Start(socket =>
             {
@@ -43,14 +45,7 @@ namespace ChatWeb.WebSocket
                 {
                     LoginOutAndClose(socket);
                 };
-
-                socket.OnError = (e) =>
-                {
-                    LoginOutAndClose(socket); //网络断开
-                };
-
             });
-
         }
 
         /// <summary>
@@ -92,7 +87,7 @@ namespace ChatWeb.WebSocket
                 {
                     var model = msg.JsonDeserialize<MsgEntity>();
                     subscriber.NotifyAllClient(model);
-                });
+                });             
             };
             // 移除渠道后
             _channelManage.EventChannelRemoveed += (manage, subscriber) =>
@@ -133,25 +128,27 @@ namespace ChatWeb.WebSocket
                     
                 };
 
-                LoginNotify(subscriber, client);
+                // LoginNotify(subscriber, client);  // 发送登录消息
 
                 if (client.ClientId != client.Channel)
                 {
-                    _redisMessageManage.AddChannelSubscribeUser(client.Channel, client.ClientId);   // 必须异步
+                    // _redisMessageManage.AddChannelSubscribeUser(client.Channel, client.ClientId);   // 添加在线用户
                 }
                 else
                 {
                     GetUserAndMsgList(client);    //获取好友、历史消息
                 }
+
+                // Console.WriteLine($"【{subscriber.ChannelName}】上线数量：{subscriber.DicClientSockets.Count}");
             };
             // 移除渠道用户后
             _channelManage.EventClientRemoved += (subscriber, client) =>
             {
-                LoginNotify(subscriber, client);
+                // LoginNotify(subscriber, client); // 发送登出消息
 
                 if (client.ClientId != client.Channel)
                 {
-                    _redisMessageManage.DelChannelSubscribeUser(client.Channel, client.ClientId);   // 必须异步
+                    // _redisMessageManage.DelChannelSubscribeUser(client.Channel, client.ClientId);   // 移除在线用户
                 }
                 else
                 {
@@ -167,16 +164,21 @@ namespace ChatWeb.WebSocket
         /// <param name="client"></param>
         private void LoginNotify(ISubscriber iSubscriber, IClient client)
         {
-            var msgModel = new MsgEntity
+            Task.Factory.StartNew(() =>
             {
-                Type = client.Status == ClientStatusEnum.SignOut ? (int)MsgTypeEnum.登出 : (int)MsgTypeEnum.登录,
-                Data = iSubscriber.GetClientCount().ToString(),
-                FromId = client.ClientId,
-                FromName = client.ClientName
-            };
-            _redisMessageManage.SendMsg(client.Channel, msgModel);
+                var msgModel = new MsgEntity
+                {
+                    MsgId = Guid.NewGuid().ToString().Replace("-", "").ToLower(),
+                    Type = client.Status == ClientStatusEnum.SignOut ? (int)MsgTypeEnum.登出 : (int)MsgTypeEnum.登录,
+                    Data = iSubscriber.DicClientSockets.Count.ToString(),
+                    CurTime = DateTime.Now.ConvertDateTimeToInt(),
+                    FromId = client.ClientId,
+                    FromName = client.ClientName
+                };
+                _redisMessageManage.SendMsg(client.Channel, msgModel);
 
-            //iSubscriber.NotifyAllClient(msgModel); // 聊天室单机非Redis模式
+                //iSubscriber.NotifyAllClient(msgModel); // 聊天室单机非Redis模式
+            });
         }
 
         /// <summary>

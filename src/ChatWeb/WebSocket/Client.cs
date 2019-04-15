@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web;
 using ChatWeb.Enum;
 using ChatWeb.Model;
@@ -15,6 +16,8 @@ namespace ChatWeb.WebSocket
         public string ClientName { get; }
 
         public string Channel { get; }
+
+        public bool IsClose { get; set; }
 
         public ClientStatusEnum Status { get; set; } = ClientStatusEnum.OnLine;
 
@@ -71,18 +74,17 @@ namespace ChatWeb.WebSocket
             handler?.Invoke(this, msg);
         }
 
-        public void MsgReceive(string msg)
+        public async Task MsgReceive(string msg)
         {
-            Socket?.Send(msg);
+            if (!IsClose || Socket.IsAvailable)
+            {
+                await Socket.Send(msg);
+            }
         }
 
         public void Dispose()
         {
             EventMsgSended = null;
-
-            //GC.Collect();
-            //GC.WaitForPendingFinalizers();
-            //GC.Collect();
         }
     }
 }

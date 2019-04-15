@@ -13,8 +13,6 @@ namespace ChatWeb.WebSocket
 {
     public class Subscriber : ISubscriber, IDisposable
     {
-        private int _count;
-
         //防止并发
         private readonly ActionBlock<IClient> _addRemoveBlock;
         private readonly BatchBlock<MsgEntity> _sendMsgBatchBlock;
@@ -23,8 +21,6 @@ namespace ChatWeb.WebSocket
         private int _isProcessingMsg;  //是否正在发送处理数据
 
         public string ChannelName { get;}
-
-        public bool IsEmpty { get; private set; }
 
         public ConcurrentDictionary<string, IClient> DicClientSockets { get;}
 
@@ -50,17 +46,17 @@ namespace ChatWeb.WebSocket
 
                 //发送
                 var msg = entity.JsonSerialize();
-                Parallel.ForEach(DicClientSockets, client =>
-                {
-                    client.Value.MsgReceive(msg);
-                });
+                Parallel.ForEach(DicClientSockets, async client =>
+                 {
+                     await client.Value.MsgReceive(msg);
+                 });
 
                 AppConfigure.Smp.Release();
-                SpinWait.SpinUntil(() => _count < 100, _count / 100 * spanTime);
+                SpinWait.SpinUntil(() => false, spanTime);     // 规则自定
             });
 
-            // 队列超过5K ， 不在入队，合并5条后发送
-            _sendMsgBatchBlock = new BatchBlock<MsgEntity>(5, new GroupingDataflowBlockOptions { Greedy = true, BoundedCapacity = 5000 });
+            // 合并5条后发送
+            _sendMsgBatchBlock = new BatchBlock<MsgEntity>(5);
             _sendMsgBatchBlock.LinkTo(sendMsgActionBlock);
         }
 
@@ -70,45 +66,35 @@ namespace ChatWeb.WebSocket
             {
                 if (DicClientSockets.Remove(client.ClientId, out IClient temp))
                 {
-                    Interlocked.Add(ref _count, -1);
-
                     client = temp;  //补充完整信息
+                    client.IsClose = true;
                     client.Status = ClientStatusEnum.SignOut;
 
                     var handler = EventClientRemoved;
                     handler?.Invoke(this, client);
                 }
 
-                //IsEmpty = DicClientSockets.IsEmpty;
-                IsEmpty = _count <= 0;
-
                 client.Dispose();
             }
             else
             {
-                if (DicClientSockets.ContainsKey(client.ClientId))
+                DicClientSockets.AddOrUpdate(client.ClientId, s =>
                 {
-                    var tempClient = DicClientSockets[client.ClientId];
-                    if (tempClient != null)
+                    var handler = EventClientAdded;
+                    handler?.Invoke(this, client);
+                    return client;
+                }, (s, tempClient) =>
+                {
+                    if (tempClient.Socket != null)
                     {
-                        if (tempClient.Socket != null)
-                        {
-                            tempClient.Socket.OnClose = () => { };  //移除委托
-                            tempClient.Socket.OnError = e => { };  //移除委托
-                            // 可在这里发送消息通知其他地方已经登录
-                            tempClient.Socket.Close();
-                        }
-                        tempClient.Socket = client.Socket;
+                        tempClient.Socket.OnClose = () => { };  //移除委托
+                        tempClient.Socket.OnError = e => { };  //移除委托
+                        // 可在这里发送消息通知其他地方已经登录
+                        tempClient.Socket.Close();
                     }
-                }
-                else
-                {
-                    Interlocked.Add(ref _count, 1);
-                    DicClientSockets[client.ClientId] = client;
-                }
-
-                var handler = EventClientAdded;
-                handler?.Invoke(this, client);
+                    tempClient.Socket = client.Socket;
+                    return client;
+                });
             }           
         }
 
@@ -145,29 +131,10 @@ namespace ChatWeb.WebSocket
             _addRemoveBlock.Post(client);
         }
 
-        public bool CheckClientIsEmpty()
-        {
-            //return DicClientSockets.IsEmpty;
-            return _count <= 0;
-        }
-
-        public int GetClientCount()
-        {
-            //return DicClientSockets.Count;
-            return _count;
-        }
-
         public void Dispose()
         {
-            //_addRemoveBlock = null;
-            //_sendMsgActionBlockBatch = null;
-            //DicClientSockets = null;
             EventClientAdded = null;
             EventClientRemoved = null;
-
-            //GC.Collect();
-            //GC.WaitForPendingFinalizers();
-            //GC.Collect();
         }
 
     }

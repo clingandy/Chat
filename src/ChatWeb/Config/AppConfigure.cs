@@ -1,15 +1,25 @@
-﻿using System.Threading;
-using ChatWeb.Tool;
-
-namespace ChatWeb.Config
+﻿namespace ChatWeb.Config
 {
-    public class AppConfigure
+    public class MessageConfigure
     {
-        public AppConfigure()
-        {
-            Smp = new SemaphoreSlim(AppSettingsHelper.GetInt32("MaxDegreeOfParallelism", 100));
-        }
+        /// <summary>
+        /// 全部渠道限制多少个客户端连接并行发消息
+        /// </summary>
+        public int TotalMaxDegreeOfParallelism { get; set; }
 
-        public static SemaphoreSlim Smp = new SemaphoreSlim(100);
+        /// <summary>
+        /// 单个渠道限制多少个客户端连接并行发消息
+        /// </summary>
+        public int ChannelMaxDegreeOfParallelism { get; set; }
+
+        /// <summary>
+        /// 每个客户端连接发消息间隔多久才Next下一个客户端连接发送
+        /// </summary>
+        public int SendMsgSpanTime { get; set; }
+
+        /// <summary>
+        /// 每个渠道消息队列中缓存的最大数量 , 超过后面的消息将丢弃
+        /// </summary>
+        public int BoundedCapacity { get; set; }
     }
 }

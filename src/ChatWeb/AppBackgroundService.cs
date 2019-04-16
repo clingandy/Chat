@@ -7,16 +7,16 @@ namespace ChatWeb
 {
     public class AppBackgroundService : BackgroundService
     {
-        private readonly ChatService _webSocketService;
+        private readonly ChatService _chatService;
 
         public AppBackgroundService(ChatService webSocketService)
         {
-            _webSocketService = webSocketService;
+            _chatService = webSocketService;
         }
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            return Task.Factory.StartNew(_webSocketService.InitWebSocker, stoppingToken);
+            return Task.Factory.StartNew(_chatService.InitWebSocker, stoppingToken);
         }
     }
 }

@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
+using ChatWeb.Config;
+using Microsoft.Extensions.Options;
 
 namespace ChatWeb.WebSocket
 {
@@ -14,9 +17,15 @@ namespace ChatWeb.WebSocket
         public event Action<ISubscriber, IClient> EventClientAdded;
         public event Action<ISubscriber, IClient> EventClientRemoved;
 
-        public ChannelManage()
+        private readonly SemaphoreSlim _smp;  // 信号量，全部渠道限制多少个客户端连接并行发消息
+        private readonly MessageConfigure _messageConfigure; // 消息配置
+        
+
+        public ChannelManage(IOptions<MessageConfigure> messageConfigure)
         {
             ChannelList = new ConcurrentDictionary<string, ISubscriber>();
+            _messageConfigure = messageConfigure.Value;
+            _smp = new SemaphoreSlim(_messageConfigure.TotalMaxDegreeOfParallelism);
         }
 
         public void ChannelClientAdd(IClient client)
@@ -39,7 +48,7 @@ namespace ChatWeb.WebSocket
 
         private ISubscriber AddSubscriberChannel(string channel)
         {
-            var sub = new Subscriber(channel);
+            var sub = new Subscriber(_messageConfigure, _smp, channel);
             ChannelList[channel] = sub;
 
             //添加Channel后的处理事件

@@ -27,7 +27,7 @@ namespace ChatWeb.WebSocket
         public event Action<ISubscriber, IClient> EventClientAdded;
         public event Action<ISubscriber, IClient> EventClientRemoved;
 
-        public Subscriber(string channelName)
+        public Subscriber(MessageConfigure messageConfigure, SemaphoreSlim smp , string channelName)
         {
             ChannelName = channelName;
 
@@ -38,22 +38,22 @@ namespace ChatWeb.WebSocket
                 ClientPost(client);
             });
 
-            var spanTime = AppSettingsHelper.GetInt32("SendMsgSpanTime", 5);
             var sendMsgActionBlock = new ActionBlock<MsgEntity[]>(entity =>
             {
-                //限制同时发送消息数量，限制带宽
-                AppConfigure.Smp.Wait();
-
-                //发送
                 var msg = entity.JsonSerialize();
-                Parallel.ForEach(DicClientSockets, async client =>
-                 {
-                     await client.Value.MsgReceive(msg);
-                 });
+                Parallel.ForEach(DicClientSockets, new ParallelOptions{ MaxDegreeOfParallelism = messageConfigure.ChannelMaxDegreeOfParallelism}, item =>
+                {
+                    //限制同时发送消息数量，限制带宽；队列限制1W条
+                    //具体配置按带宽调整
+                    smp.Wait();
 
-                AppConfigure.Smp.Release();
-                SpinWait.SpinUntil(() => false, spanTime);     // 规则自定
-            });
+                    item.Value.MsgReceive(msg);
+                    Thread.Sleep(messageConfigure.SendMsgSpanTime);
+
+                    smp.Release();
+
+                });
+            }, new ExecutionDataflowBlockOptions { BoundedCapacity = messageConfigure.BoundedCapacity });
 
             // 合并5条后发送
             _sendMsgBatchBlock = new BatchBlock<MsgEntity>(5);

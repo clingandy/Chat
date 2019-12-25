@@ -14,15 +14,11 @@ namespace ChatWeb.WebSocket
 
         string Channel { get; }
 
-        bool IsClose { get; set; }
-
         ClientStatusEnum Status { get; set; }
 
         IWebSocketConnection Socket { get; set; }
 
         event Action<IClient, MsgEntity> EventMsgSended;
-
-        void MsgSend(MsgEntity msg);
 
         Task MsgReceive(string msg);
 

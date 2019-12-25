@@ -19,6 +19,7 @@ namespace ChatWeb.WebSocket
         private const int ProcessingMsg = 1;    //正在发送处理消息数据
         private const int UnProcessingMsg = 0;  //没有发送处理消息数据
         private int _isProcessingMsg;  //是否正在发送处理数据
+        private readonly SemaphoreSlim _smp;  // 信号量，全部渠道限制多少个客户端连接并行发消息
 
         public string ChannelName { get;}
 
@@ -27,7 +28,7 @@ namespace ChatWeb.WebSocket
         public event Action<ISubscriber, IClient> EventClientAdded;
         public event Action<ISubscriber, IClient> EventClientRemoved;
 
-        public Subscriber(MessageConfigure messageConfigure, SemaphoreSlim smp , string channelName)
+        public Subscriber(MessageConfigure messageConfigure , SemaphoreSlim smp, string channelName)
         {
             ChannelName = channelName;
 
@@ -37,22 +38,20 @@ namespace ChatWeb.WebSocket
             {
                 ClientPost(client);
             });
-
             var sendMsgActionBlock = new ActionBlock<MsgEntity[]>(entity =>
             {
                 var msg = entity.JsonSerialize();
-                Parallel.ForEach(DicClientSockets, new ParallelOptions{ MaxDegreeOfParallelism = messageConfigure.ChannelMaxDegreeOfParallelism}, item =>
-                {
-                    //限制同时发送消息数量，限制带宽；队列限制1W条
-                    //具体配置按带宽调整
-                    smp.Wait();
 
+                //限制同时发送消息数量，限制带宽；队列限制1W条
+                //具体配置按带宽调整
+                smp.Wait();
+                //Parallel.ForEach(DicClientSockets, new ParallelOptions { MaxDegreeOfParallelism = messageConfigure.ChannelMaxDegreeOfParallelism }, item =>
+                Parallel.ForEach(DicClientSockets, item =>
+                {
                     item.Value.MsgReceive(msg);
                     Thread.Sleep(messageConfigure.SendMsgSpanTime);
-
-                    smp.Release();
-
                 });
+                smp.Release();
             }, new ExecutionDataflowBlockOptions { BoundedCapacity = messageConfigure.BoundedCapacity });
 
             // 合并5条后发送
@@ -67,7 +66,6 @@ namespace ChatWeb.WebSocket
                 if (DicClientSockets.Remove(client.ClientId, out IClient temp))
                 {
                     client = temp;  //补充完整信息
-                    client.IsClose = true;
                     client.Status = ClientStatusEnum.SignOut;
 
                     var handler = EventClientRemoved;
@@ -135,6 +133,10 @@ namespace ChatWeb.WebSocket
         {
             EventClientAdded = null;
             EventClientRemoved = null;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
         }
 
     }

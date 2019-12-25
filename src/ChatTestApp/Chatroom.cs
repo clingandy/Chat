@@ -66,12 +66,7 @@ namespace ChatTestApp
 
         private void _btnClearMsg_Click(object sender, EventArgs e)
         {
-            //_listBoxMsg.Items.Clear();
-            while (_listBoxMsg.Items.Count > 3)
-            {
-                _listBoxMsg.Items.RemoveAt(0);
-            }
-            _listBoxMsg.Update();
+            ClearListBox();
         }
 
         private void _btnShowReceiveInfo_Click(object sender, EventArgs e)
@@ -102,6 +97,17 @@ namespace ChatTestApp
         #endregion
 
         #region 操作
+
+        private void ClearListBox()
+        {
+            _receiveMsgTotalCountDic.Clear();
+            _listBoxMsg.Items.Clear();
+            //while (_listBoxMsg.Items.Count > 3)
+            //{
+            //    _listBoxMsg.Items.RemoveAt(0);
+            //}
+            _listBoxMsg.Update();
+        }
 
         /// <summary>
         /// 获取用户列表
@@ -327,8 +333,6 @@ namespace ChatTestApp
             _btnSendMsgTest.Enabled = false;
             _btnSendMsgTest.Text = @"并发消息测试...";
 
-            _receiveMsgTotalCountDic.Clear();   //清空记录
-
             if (Int32.TryParse(_txtThreadSleepTime.Text, out var threadSleepTime))
             {
                 var msgModel = new MsgEntity
@@ -357,6 +361,12 @@ namespace ChatTestApp
                         //await _clientWebSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
                         _webSocketHelper.SendMsg(msgModel.JsonSerialize());
                         Thread.Sleep(threadSleepTime);
+
+                        if (_checkBoxAutoClear.Checked)
+                        {
+                            ClearListBox();
+                        }
+                        
                     }
                     _isSendMsgTest = false;
                     _btnSendMsgTest.Enabled = true;

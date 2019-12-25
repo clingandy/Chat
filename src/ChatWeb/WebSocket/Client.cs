@@ -17,8 +17,6 @@ namespace ChatWeb.WebSocket
 
         public string Channel { get; }
 
-        public bool IsClose { get; set; }
-
         public ClientStatusEnum Status { get; set; } = ClientStatusEnum.OnLine;
 
         public IWebSocketConnection Socket { get; set; }
@@ -56,7 +54,7 @@ namespace ChatWeb.WebSocket
             Status = status;
         }
 
-        public void MsgSend(MsgEntity msg)
+        private void MsgSend(MsgEntity msg)
         {
             //if (_nextSendMsgTime > DateTime.Now)
             //{
@@ -76,15 +74,13 @@ namespace ChatWeb.WebSocket
 
         public async Task MsgReceive(string msg)
         {
-            if (!IsClose || Socket.IsAvailable)
-            {
-                await Socket.Send(msg);
-            }
+            await Socket.Send(msg);
         }
 
         public void Dispose()
         {
             EventMsgSended = null;
+            Socket = null;
         }
     }
 }

@@ -44,6 +44,7 @@
             this._btnStopSendMsgTest = new System.Windows.Forms.Button();
             this._btnShowReceiveInfo = new System.Windows.Forms.Button();
             this._listBoxReceiveInfo = new System.Windows.Forms.ListBox();
+            this._checkBoxAutoClear = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // _listBoxMsg
@@ -120,11 +121,11 @@
             // 
             // _btnClearMsg
             // 
-            this._btnClearMsg.Location = new System.Drawing.Point(36, 516);
+            this._btnClearMsg.Location = new System.Drawing.Point(59, 516);
             this._btnClearMsg.Name = "_btnClearMsg";
-            this._btnClearMsg.Size = new System.Drawing.Size(187, 29);
+            this._btnClearMsg.Size = new System.Drawing.Size(164, 29);
             this._btnClearMsg.TabIndex = 15;
-            this._btnClearMsg.Text = "清理消息列表";
+            this._btnClearMsg.Text = "清理消息、接收统计列表";
             this._btnClearMsg.UseVisualStyleBackColor = true;
             this._btnClearMsg.Click += new System.EventHandler(this._btnClearMsg_Click);
             // 
@@ -209,11 +210,21 @@
             this._listBoxReceiveInfo.Size = new System.Drawing.Size(241, 244);
             this._listBoxReceiveInfo.TabIndex = 11;
             // 
+            // _checkBoxAutoClear
+            // 
+            this._checkBoxAutoClear.AutoSize = true;
+            this._checkBoxAutoClear.Location = new System.Drawing.Point(36, 523);
+            this._checkBoxAutoClear.Name = "_checkBoxAutoClear";
+            this._checkBoxAutoClear.Size = new System.Drawing.Size(15, 14);
+            this._checkBoxAutoClear.TabIndex = 17;
+            this._checkBoxAutoClear.UseVisualStyleBackColor = true;
+            // 
             // Chatroom
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(814, 604);
+            this.Controls.Add(this._checkBoxAutoClear);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label1);
@@ -260,5 +271,6 @@
         private System.Windows.Forms.Button _btnStopSendMsgTest;
         private System.Windows.Forms.Button _btnShowReceiveInfo;
         private System.Windows.Forms.ListBox _listBoxReceiveInfo;
+        private System.Windows.Forms.CheckBox _checkBoxAutoClear;
     }
 }

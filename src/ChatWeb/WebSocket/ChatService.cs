@@ -86,6 +86,7 @@ namespace ChatWeb.WebSocket
                 _redisMessageManage.OnSubscribe(subscriber.ChannelName, msg =>
                 {
                     var model = msg.JsonDeserialize<MsgEntity>();
+                    model.Data = $"{model.Data}—渠道活动数：{subscriber.DicClientSockets.Count}";
                     subscriber.NotifyAllClient(model);
                 });             
             };
@@ -98,9 +99,9 @@ namespace ChatWeb.WebSocket
             // 添加渠道用户后
             _channelManage.EventClientAdded += (subscriber, client) =>
             {
-                //client.EventMsgSended += subscriber.NotifyAllClient;    //聊天室单机非Redis模式，接受到消息后直接转发
+                //client.EventMsgSended += (that, msgEntity) => subscriber.NotifyAllClient(msgEntity);    //聊天室单机非Redis模式，接受到消息后直接转发
 
-                client.EventMsgSended += (that ,msgEntity) =>
+                client.EventMsgSended += (that, msgEntity) =>
                 {
                     if (that.Status != ClientStatusEnum.OnLine || msgEntity.Type == (int)MsgTypeEnum.禁止发送)
                     {
@@ -125,7 +126,7 @@ namespace ChatWeb.WebSocket
                                 break;
                         }
                     }
-                    
+
                 };
 
                 // LoginNotify(subscriber, client);  // 发送登录消息
